@@ -115,7 +115,6 @@
   /* Compatibility aliases for existing screens */
   --bg-primary: var(--color-bg);
   --bg-secondary: var(--color-bg-soft);
-  --sidebar-bg: #0f172a;
   --card-bg: var(--color-bg-elevated);
   --card-hover-bg: #fafbff;
   --text-main: var(--color-text);

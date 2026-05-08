@@ -1,66 +1,9 @@
 /* ============================================
    DASHBOARD.CSS — Shared form & component styles
-   (IncidenceForm, LoanForm, PayrollReport, BulkDataMapper)
+   (IncidenceForm, LoanForm)
    ============================================ */
 
-/* ---- Container ---- */
-.dashboard-container {
-  min-height: 100vh;
-  background: var(--bg-primary);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-.dashboard-content {
-  padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.dashboard-content h2 {
-  color: var(--text-main);
-  margin-top: 0;
-  margin-bottom: 1.5rem;
-  font-size: 1.875rem;
-  font-weight: 600;
-}
-
-.dashboard-error {
-  padding: 0.875rem 1rem;
-  background: var(--error-bg);
-  border: 1px solid var(--error-border);
-  color: var(--error-text);
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-  font-size: 0.875rem;
-}
-
-/* Animations */
-.fade-in {
-  animation: fadeIn 0.25s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ---- Form Wrappers ---- */
-.form-wrapper {
-  display: flex;
-  justify-content: center;
-  padding-top: 2rem;
-}
-
-.form-card {
-  background: var(--card-bg);
-  border-radius: 14px;
-  padding: 2.25rem;
-  width: 100%;
-  max-width: 520px;
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--border-color);
-}
-
+/* ---- Form Header ---- */
 .form-header {
   margin-bottom: 1.75rem;
 }
@@ -132,74 +75,6 @@
   color: var(--border-color);
 }
 
-/* ---- Submit Button ---- */
-.submit-button {
-  margin-top: 0.75rem;
-  padding: 0.85rem 1.25rem;
-  background: var(--accent-primary);
-  border: none;
-  border-radius: 8px;
-  color: var(--color-white);
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px var(--accent-shadow);
-  font-family: inherit;
-}
-
-.submit-button:hover:not(:disabled) {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px var(--accent-shadow);
-}
-
-.submit-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  transform: none;
-  background: var(--text-muted);
-  box-shadow: none;
-}
-
-/* ---- Status Messages ---- */
-.status-message {
-  padding: 0.8rem 1rem;
-  border-radius: 8px;
-  margin-bottom: 1.25rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.status-message.success {
-  background: var(--success-bg);
-  color: var(--success-text);
-  border: 1px solid var(--success-border);
-}
-
-.status-message.error {
-  background: var(--error-bg);
-  color: var(--error-text);
-  border: 1px solid var(--error-border);
-}
-
-/* ---- Calc / Report Controls ---- */
-.calc-controls {
-  display: flex;
-  align-items: flex-end;
-  gap: 1rem;
-  background: var(--card-bg);
-  padding: 1.25rem 1.5rem;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-xs);
-  margin-bottom: 1.75rem;
-}
-
-.mt-4 { margin-top: 1.5rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.mb-4 { margin-bottom: 1rem; }
-
 /* ---- AG Grid — light slate overrides ---- */
 .ag-theme-alpine {
   --ag-background-color:        var(--card-bg);
@@ -221,5 +96,3 @@
   border: 1px solid var(--border-color);
 }
 
-/* Tab pane */
-.tab-pane { width: 100%; }
