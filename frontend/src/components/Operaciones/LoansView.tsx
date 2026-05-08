@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import LoanForm from '../LoanForm';
-import { CreditCard, ArrowClockwise } from '@phosphor-icons/react';
+import { ArrowClockwise } from '@phosphor-icons/react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef } from 'ag-grid-community';
 import api from '../../api/axios';
+import { PageShell, GlassCard, Button, ErrorState } from '../ui';
 import '../modules.css';
-import '../Dashboard.css'; // reuse form-card, data-form, etc.
-import '../CapitalHumano/CapitalHumano.css';
+import '../Dashboard.css';
+import './Operaciones.css';
 import QuickSearch from '../QuickSearch';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -41,11 +42,13 @@ interface LoanDisplay {
 const LoansView: React.FC = () => {
   const [loans, setLoans] = useState<LoanDisplay[]>([]);
   const [filter, setFilter] = useState<'Activos' | 'Pagados' | 'Todos'>('Activos');
-  const [, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [quickFilterText, setQuickFilterText] = useState('');
 
   const fetchLoans = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [loansRes, empRes] = await Promise.all([
         api.get('/api/payroll/loans/'),
@@ -70,7 +73,7 @@ const LoansView: React.FC = () => {
 
       setLoans(display);
     } catch (err) {
-      console.error('Failed to fetch loans', err);
+      setError('No se pudieron cargar los préstamos. Verifica tu conexión e intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -89,43 +92,43 @@ const LoansView: React.FC = () => {
   const columnDefs: ColDef[] = [
     { field: 'empleado_no_nomina', headerName: 'No. Nómina', sortable: true, filter: true, width: 140, getQuickFilterText: p => p.value ? p.value.toString() : '' },
     { field: 'empleado_nombre', headerName: 'Nombre', sortable: true, filter: true, flex: 2, getQuickFilterText: p => p.value ? p.value.toString() : '' },
-    { 
-      field: 'monto_total', 
-      headerName: 'Monto Total', 
-      sortable: true, 
-      filter: true, 
+    {
+      field: 'monto_total',
+      headerName: 'Monto Total',
+      sortable: true,
+      filter: true,
       type: 'numericColumn',
       headerClass: 'header-left-aligned',
       cellStyle: { textAlign: 'left' },
       valueFormatter: p => p.value != null ? `$${p.value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '',
       getQuickFilterText: p => p.value != null ? `${p.value} $${p.value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''
     },
-    { 
-      field: 'abono_semanal', 
-      headerName: 'Abono Semanal', 
-      sortable: true, 
-      filter: true, 
+    {
+      field: 'abono_semanal',
+      headerName: 'Abono Semanal',
+      sortable: true,
+      filter: true,
       type: 'numericColumn',
       headerClass: 'header-left-aligned',
       cellStyle: { textAlign: 'left' },
       valueFormatter: p => p.value != null ? `$${p.value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '',
       getQuickFilterText: p => p.value != null ? `${p.value} $${p.value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''
     },
-    { 
-      field: 'pagos_realizados', 
-      headerName: 'Pagos Realizados', 
-      sortable: true, 
-      filter: true, 
+    {
+      field: 'pagos_realizados',
+      headerName: 'Pagos Realizados',
+      sortable: true,
+      filter: true,
       type: 'numericColumn',
       headerClass: 'header-left-aligned',
       cellStyle: { textAlign: 'left' },
       valueFormatter: p => p.value != null ? p.value.toLocaleString('es-MX') : '',
       getQuickFilterText: p => p.value != null ? `${p.value} ${p.value.toLocaleString('es-MX')}` : ''
     },
-    { 
-      field: 'status', 
-      headerName: 'Estado', 
-      sortable: true, 
+    {
+      field: 'status',
+      headerName: 'Estado',
+      sortable: true,
       filter: true,
       getQuickFilterText: p => p.value ? p.value.toString() : '',
       cellRenderer: (p: any) => (
@@ -137,53 +140,50 @@ const LoansView: React.FC = () => {
   ];
 
   return (
-    <div className="module-page">
-      <div className="module-page-header">
-        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-          <CreditCard size={32} weight="duotone" color="var(--accent-primary)" />
-          Préstamos
-        </h1>
-        <p>Registra nuevos préstamos para empleados y visualiza su estado de cuenta.</p>
-      </div>
-
+    <PageShell
+      title="Préstamos"
+      description="Registra nuevos préstamos y visualiza el estado de cuenta de cada empleado."
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        {error && (
+          <ErrorState
+            title="Error al cargar préstamos"
+            message={error}
+            action={
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => { setError(null); fetchLoans(); }}
+              >
+                Reintentar
+              </Button>
+            }
+          />
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <LoanForm onLoanAdded={fetchLoans} />
         </div>
 
-        <div className="ch-card ch-grid-wrapper" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: '8px' }}>
-              {['Activos', 'Pagados', 'Todos'].map((opt) => (
+        <GlassCard padding="md">
+          <div className="operaciones-toolbar">
+            <div className="operaciones-filter-group">
+              {(['Activos', 'Pagados', 'Todos'] as const).map(opt => (
                 <button
                   key={opt}
-                  onClick={() => setFilter(opt as any)}
-                  style={{
-                    padding: '0.4rem 1rem',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontSize: '0.85rem',
-                    fontWeight: filter === opt ? 600 : 500,
-                    background: filter === opt ? 'var(--card-bg)' : 'transparent',
-                    color: filter === opt ? 'var(--text-main)' : 'var(--text-muted)',
-                    boxShadow: filter === opt ? 'var(--shadow-sm)' : 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
+                  onClick={() => setFilter(opt)}
+                  className={`operaciones-filter-btn${filter === opt ? ' operaciones-filter-btn--active' : ''}`}
                 >
                   {opt}
                 </button>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+
+            <div className="operaciones-toolbar-right">
               <QuickSearch value={quickFilterText} onChange={setQuickFilterText} />
-              <button
-                onClick={fetchLoans}
-                className="ch-btn ch-btn-ghost"
-                style={{ fontSize: '0.85rem' }}
-              >
+              <Button variant="ghost" size="sm" onClick={fetchLoans} disabled={loading}>
                 <ArrowClockwise weight="bold" /> Actualizar
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -212,9 +212,9 @@ const LoansView: React.FC = () => {
               }
             />
           </div>
-        </div>
+        </GlassCard>
       </div>
-    </div>
+    </PageShell>
   );
 };
 

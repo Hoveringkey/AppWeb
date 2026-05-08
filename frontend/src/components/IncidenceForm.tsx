@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { CalendarPlus, CircleNotch, FloppyDisk, CaretDown, Check } from '@phosphor-icons/react';
+import { GlassCard, Button } from './ui';
 
 interface Employee {
   no_nomina: string;
@@ -209,7 +210,7 @@ const IncidenceForm: React.FC<IncidenceFormProps> = ({ onIncidenceAdded }) => {
   };
 
   return (
-    <div className="form-card">
+    <GlassCard padding="lg" style={{ maxWidth: '520px', width: '100%' }}>
       <div className="form-header">
         <h3>Registrar Incidencia</h3>
         <p>Ingrese los datos de la nueva incidencia.</p>
@@ -242,7 +243,7 @@ const IncidenceForm: React.FC<IncidenceFormProps> = ({ onIncidenceAdded }) => {
               background: 'var(--bg-primary)', color: tipoIncidencia ? 'var(--text-main)' : 'var(--text-muted)',
               fontSize: '0.9rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', transition: 'all 0.2s ease',
-              boxShadow: dropdownOpen ? '0 0 0 3px rgba(79, 70, 229, 0.1)' : 'none',
+              boxShadow: dropdownOpen ? '0 0 0 3px var(--color-accent-soft)' : 'none',
               borderColor: dropdownOpen ? 'var(--accent-primary)' : 'var(--border-color)'
             }}
           >
@@ -344,7 +345,7 @@ const IncidenceForm: React.FC<IncidenceFormProps> = ({ onIncidenceAdded }) => {
           </div>
         )}
 
-        <button type="submit" className="submit-button" disabled={isLoading}>
+        <Button type="submit" variant="primary" disabled={isLoading} style={{ width: '100%' }}>
           {isLoading ? (
             <><CircleNotch className="animate-spin" size={18} /> Guardando…</>
           ) : aplicarATodos ? (
@@ -352,9 +353,9 @@ const IncidenceForm: React.FC<IncidenceFormProps> = ({ onIncidenceAdded }) => {
           ) : (
             <><FloppyDisk size={18} weight="fill" /> Guardar Incidencia</>
           )}
-        </button>
+        </Button>
       </form>
-    </div>
+    </GlassCard>
   );
 };
 

@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import IncidenceForm from '../IncidenceForm';
 import QuickSearch from '../QuickSearch';
-import { ClipboardText, ArrowClockwise } from '@phosphor-icons/react';
+import { ArrowClockwise } from '@phosphor-icons/react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef } from 'ag-grid-community';
 import api from '../../api/axios';
+import { PageShell, GlassCard, Button, ErrorState } from '../ui';
 import '../modules.css';
 import '../Dashboard.css';
-import '../CapitalHumano/CapitalHumano.css';
+import './Operaciones.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -44,7 +45,8 @@ const IncidencesView: React.FC = () => {
   const [incidences, setIncidences] = useState<IncidenceDisplay[]>([]);
   const [currentWeek, setCurrentWeek] = useState<number>(1);
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
-  const [, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [quickFilterText, setQuickFilterText] = useState('');
 
   const fetchCurrentWeek = async () => {
@@ -66,6 +68,7 @@ const IncidencesView: React.FC = () => {
   const fetchIncidences = useCallback(async () => {
     if (!selectedWeek) return;
     setLoading(true);
+    setError(null);
     try {
       const [incRes, empRes, catRes] = await Promise.all([
         api.get('/api/payroll/incidence-records/'),
@@ -113,7 +116,7 @@ const getWeekNumber = (d: Date) => {
 
       setIncidences(display);
     } catch (err) {
-      console.error('Failed to fetch incidences', err);
+      setError('No se pudieron cargar las incidencias. Verifica tu conexión e intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -131,56 +134,56 @@ const getWeekNumber = (d: Date) => {
   ];
 
   return (
-    <div className="module-page">
-      <div className="module-page-header">
-        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-          <ClipboardText size={32} weight="duotone" color="var(--accent-primary)" />
-          Incidencias
-        </h1>
-        <p>Registra faltas, permisos, días extra y asuetos. Selecciona "Asueto" para activar la opción de aplicación masiva.</p>
-      </div>
-
+    <PageShell
+      title="Incidencias"
+      description="Registra faltas, permisos, días extra y asuetos. Selecciona «Asueto» para activar la opción de aplicación masiva."
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        {error && (
+          <ErrorState
+            title="Error al cargar incidencias"
+            message={error}
+            action={
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => { setError(null); fetchIncidences(); }}
+              >
+                Reintentar
+              </Button>
+            }
+          />
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <IncidenceForm onIncidenceAdded={fetchIncidences} />
         </div>
 
-        <div className="ch-card ch-grid-wrapper" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <label htmlFor="week-selector" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>
+        <GlassCard padding="md">
+          <div className="operaciones-toolbar">
+            <div className="operaciones-toolbar-left">
+              <label htmlFor="week-selector" className="operaciones-toolbar-label">
                 Semana No.
               </label>
               <select
                 id="week-selector"
                 value={selectedWeek}
                 onChange={(e) => setSelectedWeek(Number(e.target.value))}
-                style={{
-                  padding: '0.4rem 0.8rem',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--bg-primary)',
-                  color: 'var(--text-main)',
-                  fontSize: '0.85rem',
-                  outline: 'none',
-                  cursor: 'pointer'
-                }}
+                className="operaciones-week-select"
               >
                 {Array.from({ length: 53 }, (_, i) => i + 1).map(w => (
-                  <option key={w} value={w}>Semana {w}{w === currentWeek ? ' (Actual)' : ''}</option>
+                  <option key={w} value={w}>
+                    Semana {w}{w === currentWeek ? ' (Actual)' : ''}
+                  </option>
                 ))}
               </select>
             </div>
-            
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+
+            <div className="operaciones-toolbar-right">
               <QuickSearch value={quickFilterText} onChange={setQuickFilterText} />
-              <button
-                onClick={fetchIncidences}
-                className="ch-btn ch-btn-ghost"
-                style={{ fontSize: '0.85rem' }}
-              >
+              <Button variant="ghost" size="sm" onClick={fetchIncidences} disabled={loading}>
                 <ArrowClockwise weight="bold" /> Actualizar
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -209,9 +212,9 @@ const getWeekNumber = (d: Date) => {
               }
             />
           </div>
-        </div>
+        </GlassCard>
       </div>
-    </div>
+    </PageShell>
   );
 };
 
