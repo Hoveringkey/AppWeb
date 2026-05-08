@@ -76,15 +76,6 @@ const VacationStatus: React.FC<Props> = ({ noNomina, employeeName }) => {
 
   return (
     <section className="vacation-status-panel" aria-label={`Balance de vacaciones de ${employeeName}`}>
-      <div className="vacation-status-header">
-        <div>
-          <p className="vacation-status-eyebrow">Balance LFT 2023</p>
-          <h2>Vacaciones</h2>
-          <p>{employeeName}</p>
-        </div>
-        <span className="vacation-status-period">{data.periodo}</span>
-      </div>
-
       <div className="vacation-status-grid">
         <article className="vacation-status-card vacation-status-card--accent">
           <div className="vacation-status-card__icon">
@@ -123,6 +114,10 @@ const VacationStatus: React.FC<Props> = ({ noNomina, employeeName }) => {
       </div>
 
       <div className="vacation-status-meta">
+        <div className="vacation-status-meta__item">
+          <span>Período</span>
+          <strong>{data.periodo}</strong>
+        </div>
         <div className="vacation-status-meta__item">
           <span>Antigüedad</span>
           <strong>

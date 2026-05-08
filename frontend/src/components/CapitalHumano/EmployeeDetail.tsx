@@ -7,6 +7,7 @@ import {
   Calendar, 
   CircleNotch, 
   FloppyDisk, 
+  Hash,
   ArrowsLeftRight, 
   CheckCircle, 
   CaretLeft,
@@ -15,8 +16,6 @@ import {
 } from '@phosphor-icons/react';
 import { Button, ErrorState, GlassCard, Input, LoadingState, PageShell, StatusBadge } from '../ui';
 import './CapitalHumano.css';
-
-type ActiveTab = 'datos' | 'vacaciones';
 
 interface Employee {
   no_nomina: string;
@@ -39,7 +38,6 @@ const EmployeeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('datos');
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -191,6 +189,9 @@ const EmployeeDetail: React.FC = () => {
       )
     : otherEmployees
   ).slice(0, 6);
+  const tenureYears = fechaIngreso
+    ? Math.max(0, Math.floor((Date.now() - new Date(fechaIngreso).getTime()) / (1000 * 60 * 60 * 24 * 365.25)))
+    : null;
 
   return (
     <PageShell maxWidth="1120px">
@@ -224,136 +225,199 @@ const EmployeeDetail: React.FC = () => {
           </StatusBadge>
         </GlassCard>
 
-        <GlassCard className="employee-detail-card" padding="none">
-          <div className="employee-detail-tabs" role="tablist" aria-label="Detalle de empleado">
-            <button
-              id="tab-datos"
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'datos'}
-              className={`employee-detail-tab${activeTab === 'datos' ? ' active' : ''}`}
-              onClick={() => setActiveTab('datos')}
-            >
-              <IdentificationCard size={18} weight={activeTab === 'datos' ? 'fill' : 'regular'} /> Datos
-            </button>
-            <button
-              id="tab-vacaciones"
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'vacaciones'}
-              className={`employee-detail-tab${activeTab === 'vacaciones' ? ' active' : ''}`}
-              onClick={() => setActiveTab('vacaciones')}
-            >
-              <Calendar size={18} weight={activeTab === 'vacaciones' ? 'fill' : 'regular'} /> Vacaciones
-            </button>
-          </div>
-
-          <div className="employee-detail-tab-content">
-            {activeTab === 'datos' && (
-              <>
-                {saveStatus && (
-                  <div className={`employee-detail-status employee-detail-status--${saveStatus.type}`}>
-                    {saveStatus.message}
-                  </div>
-                )}
-
-                <form id="employee-edit-form" onSubmit={handleSave} className="employee-detail-form">
-                  <Input
-                    id="field-nombre"
-                    required
-                    type="text"
-                    label="Nombre completo"
-                    value={nombre}
-                    onChange={e => setNombre(e.target.value)}
-                  />
-
-                  <Input
-                    id="field-puesto"
-                    required
-                    type="text"
-                    label="Puesto"
-                    value={puesto}
-                    onChange={e => setPuesto(e.target.value)}
-                  />
-
-                  <Input
-                    className="employee-detail-date-input"
-                    id="field-fecha-ingreso"
-                    type="date"
-                    label="Fecha de ingreso"
-                    value={fechaIngreso}
-                    onChange={e => setFechaIngreso(e.target.value)}
-                  />
-
-                  <div className="employee-detail-active-field">
-                    <span className="axis-input__label">Estado</span>
-                    <label className="employee-detail-checkbox" htmlFor="field-is-active">
-                      <input
-                        type="checkbox"
-                        id="field-is-active"
-                        checked={isActive}
-                        onChange={e => setIsActive(e.target.checked)}
-                      />
-                      <span className="employee-detail-checkbox__control" aria-hidden="true" />
-                      <span>Empleado activo</span>
-                    </label>
-                  </div>
-
-                  <Input
-                    id="field-horario-lv"
-                    type="text"
-                    label="Horario L-V"
-                    value={horarioLv}
-                    onChange={e => setHorarioLv(e.target.value)}
-                    placeholder="ej. 08:00-17:00"
-                  />
-
-                  <Input
-                    id="field-horario-s"
-                    type="text"
-                    label="Horario sábado"
-                    value={horarioS}
-                    onChange={e => setHorarioS(e.target.value)}
-                    placeholder="ej. 08:00-13:00 (vacío si no aplica)"
-                  />
-
-                  <div className="employee-detail-actions">
-                    <Button
-                      id="btn-save-employee"
-                      type="submit"
-                      disabled={isSaving}
-                    >
-                      {isSaving ? (
-                        <><CircleNotch className="animate-spin" size={18} /> Guardando...</>
-                      ) : (
-                        <><FloppyDisk weight="fill" size={18} /> Guardar Cambios</>
-                      )}
-                    </Button>
-
-                    <Button
-                      id="btn-swap-shifts"
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        setSwapSearchTerm('');
-                        setIsSwapSearchOpen(false);
-                        setSwap(s => ({ ...s, open: true, status: null, targetNomina: '' }));
-                      }}
-                    >
-                      <ArrowsLeftRight weight="bold" size={18} /> Intercambiar Turno
-                    </Button>
-                  </div>
-                </form>
-              </>
-            )}
-
-            {activeTab === 'vacaciones' && (
-              <div className="employee-detail-vacations">
-                <VacationStatus noNomina={employee.no_nomina} employeeName={employee.nombre} />
+        <form id="employee-edit-form" onSubmit={handleSave} className="employee-profile-stack">
+          <section className="employee-operational-summary" aria-label="Resumen operativo">
+            <div className="employee-operational-summary__header">
+              <span className="employee-detail-summary-icon">
+                <Hash size={20} weight="duotone" />
+              </span>
+              <div>
+                <h2>Resumen operativo</h2>
+                <p>Indicadores clave para ubicar al colaborador antes de editar su ficha.</p>
               </div>
-            )}
-          </div>
-        </GlassCard>
+            </div>
+            <div className="employee-operational-summary__grid">
+              <div className="employee-summary-metric">
+                <span>No. Nómina</span>
+                <strong>{employee.no_nomina}</strong>
+              </div>
+              <div className="employee-summary-metric">
+                <span>Estado</span>
+                <StatusBadge variant={isActive ? 'success' : 'neutral'}>
+                  {isActive ? 'Activo' : 'Inactivo'}
+                </StatusBadge>
+              </div>
+              <div className="employee-summary-metric">
+                <span>Antigüedad</span>
+                <strong>
+                  {tenureYears === null
+                    ? 'Sin fecha'
+                    : `${tenureYears} ${tenureYears === 1 ? 'año' : 'años'}`}
+                </strong>
+              </div>
+              <div className="employee-summary-metric">
+                <span>Horario principal</span>
+                <strong>{horarioLv || 'Sin horario'}</strong>
+              </div>
+            </div>
+          </section>
+
+          {saveStatus && (
+            <div className={`employee-detail-status employee-detail-status--${saveStatus.type}`}>
+              {saveStatus.message}
+            </div>
+          )}
+
+          <section className="employee-detail-section employee-detail-section--editable">
+            <div className="employee-detail-section-header employee-detail-section-header--primary">
+              <span className="employee-detail-section-icon">
+                <IdentificationCard size={20} weight="duotone" />
+              </span>
+              <div>
+                <p className="employee-detail-section-kicker">Ficha editable</p>
+                <h3>Ficha editable del colaborador</h3>
+                <p>Actualiza datos base, puesto y jornada laboral desde una sola ficha operativa.</p>
+              </div>
+            </div>
+
+            <div className="employee-detail-section-group">
+              <div className="employee-detail-group-header">
+                <div>
+                  <h4>Datos personales</h4>
+                  <p>Identificación básica y fecha de alta del colaborador.</p>
+                </div>
+              </div>
+              <div className="employee-detail-form-grid">
+                <Input
+                  className="employee-detail-field--wide"
+                  id="field-nombre"
+                  required
+                  type="text"
+                  label="Nombre completo"
+                  value={nombre}
+                  onChange={e => setNombre(e.target.value)}
+                />
+
+                <Input
+                  className="employee-detail-date-input"
+                  id="field-fecha-ingreso"
+                  type="date"
+                  label="Fecha de ingreso"
+                  value={fechaIngreso}
+                  onChange={e => setFechaIngreso(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="employee-detail-section-group">
+              <div className="employee-detail-group-header">
+                <div>
+                  <h4>Información laboral</h4>
+                  <p>Puesto actual y estado editable dentro de la operación.</p>
+                </div>
+              </div>
+              <div className="employee-detail-form-grid">
+                <Input
+                  id="field-puesto"
+                  required
+                  type="text"
+                  label="Puesto"
+                  value={puesto}
+                  onChange={e => setPuesto(e.target.value)}
+                />
+
+                <div className="employee-detail-active-field">
+                  <span className="axis-input__label">Estado</span>
+                  <label className="employee-detail-checkbox" htmlFor="field-is-active">
+                    <input
+                      type="checkbox"
+                      id="field-is-active"
+                      checked={isActive}
+                      onChange={e => setIsActive(e.target.checked)}
+                    />
+                    <span className="employee-detail-checkbox__control" aria-hidden="true" />
+                    <span>Empleado activo</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="employee-detail-section-group employee-detail-section-group--last">
+              <div className="employee-detail-group-header">
+                <div>
+                  <h4>Jornada laboral</h4>
+                  <p>Horarios usados por operación y nómina.</p>
+                </div>
+              </div>
+              <div className="employee-detail-form-grid">
+                <Input
+                  id="field-horario-lv"
+                  type="text"
+                  label="Horario L-V"
+                  value={horarioLv}
+                  onChange={e => setHorarioLv(e.target.value)}
+                  placeholder="ej. 08:00-17:00"
+                />
+
+                <Input
+                  id="field-horario-s"
+                  type="text"
+                  label="Horario sábado"
+                  value={horarioS}
+                  onChange={e => setHorarioS(e.target.value)}
+                  placeholder="ej. 08:00-13:00 (vacío si no aplica)"
+                />
+              </div>
+            </div>
+
+            <div className="employee-detail-actions-bar">
+              <div>
+                <span>Guardar ficha</span>
+                <p>Los cambios se aplican directamente al perfil del empleado.</p>
+              </div>
+              <div className="employee-detail-actions">
+                <Button
+                  id="btn-swap-shifts"
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setSwapSearchTerm('');
+                    setIsSwapSearchOpen(false);
+                    setSwap(s => ({ ...s, open: true, status: null, targetNomina: '' }));
+                  }}
+                >
+                  <ArrowsLeftRight weight="bold" size={18} /> Intercambiar Turno
+                </Button>
+
+                <Button
+                  id="btn-save-employee"
+                  type="submit"
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <><CircleNotch className="animate-spin" size={18} /> Guardando...</>
+                  ) : (
+                    <><FloppyDisk weight="fill" size={18} /> Guardar Cambios</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </section>
+
+          <section className="employee-detail-section employee-vacation-module">
+            <div className="employee-detail-section-header employee-detail-section-header--primary">
+              <span className="employee-detail-section-icon">
+                <Calendar size={20} weight="duotone" />
+              </span>
+              <div>
+                <p className="employee-detail-section-kicker">Módulo operativo</p>
+                <h3>Vacaciones</h3>
+                <p>Balance vigente y días disponibles sin salir del perfil del empleado.</p>
+              </div>
+            </div>
+            <VacationStatus noNomina={employee.no_nomina} employeeName={employee.nombre} />
+          </section>
+        </form>
 
         {swap.open && (
           <div
