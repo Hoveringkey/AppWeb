@@ -3,11 +3,13 @@ import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef } from 'ag-grid-community';
 import api from '../../api/axios';
-import { ClockCounterClockwise, ArrowClockwise } from '@phosphor-icons/react';
+import { ArrowClockwise } from '@phosphor-icons/react';
+import { PageShell, GlassCard, Button, ErrorState, EmptyState } from '../ui';
 import '../modules.css';
 import '../Dashboard.css';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import './Nomina.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -88,71 +90,74 @@ const ExtraHoursView: React.FC = () => {
   ];
 
   return (
-    <div className="module-page">
-      <div className="module-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-            <ClockCounterClockwise size={32} weight="duotone" color="var(--accent-primary)" />
-            Banco de Horas Extra
-          </h1>
-          <p>
-            {loading
-              ? 'Cargando…'
-              : `${rows.length} registros · Total acumulado: ${totalHours.toFixed(2)} hrs`}
-          </p>
-        </div>
-          <button
-            id="btn-reload-extra-hours"
-            onClick={fetchData}
-            className="ch-btn ch-btn-ghost"
-            style={{ fontSize: '0.85rem' }}
-          >
-            <ArrowClockwise weight="bold" /> Actualizar
-          </button>
-      </div>
-
-      {error && (
-        <div style={{
-          padding: '0.875rem 1rem',
-          background: 'var(--error-bg)',
-          border: '1px solid var(--error-border)',
-          borderRadius: '8px',
-          color: 'var(--error-text)',
-          fontSize: '0.875rem',
-          marginBottom: '1rem',
-        }}>
-          {error}
-        </div>
-      )}
-
-      <div className="eh-grid-wrapper" style={{ padding: '1.5rem' }}>
-        <div className="ag-theme-alpine" style={{ width: '100%' }}>
-          <AgGridReact
-            theme="legacy"
-            rowData={rows}
-            columnDefs={columnDefs}
-            pagination={false}
-            suppressPaginationPanel={true}
-            domLayout="autoHeight"
-            animateRows={true}
-            rowHeight={52}
-            headerHeight={52}
-            defaultColDef={{
-              filter: true,
-              floatingFilter: false,
-              menuTabs: ['filterMenuTab'],
-              resizable: true,
-            }}
-            overlayLoadingTemplate={
-              '<span style="color:var(--accent-primary);font-family:Inter,sans-serif;font-size:14px">Cargando banco de horas…</span>'
-            }
-            overlayNoRowsTemplate={
-              '<span style="color:var(--text-muted);font-family:Inter,sans-serif;font-size:14px">No hay registros de horas extra</span>'
+    <PageShell
+      title="Banco de Horas Extra"
+      description="Consulta el banco acumulado de horas extra por empleado y valida saldos pendientes."
+      actions={
+        <Button variant="ghost" size="sm" onClick={fetchData} disabled={loading}>
+          <ArrowClockwise weight="bold" /> Actualizar
+        </Button>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        {error && (
+          <ErrorState
+            title="Error al cargar banco de horas"
+            message={error}
+            action={
+              <Button variant="secondary" size="sm" onClick={fetchData}>
+                Reintentar
+              </Button>
             }
           />
-        </div>
+        )}
+
+        <GlassCard padding="md">
+          {!loading && !error && rows.length > 0 && (
+            <div className="nomina-summary-grid">
+              <div className="nomina-summary-card">
+                <span className="nomina-summary-label">Registros</span>
+                <span className="nomina-summary-value">{rows.length}</span>
+              </div>
+              <div className="nomina-summary-card">
+                <span className="nomina-summary-label">Total acumulado</span>
+                <span className="nomina-summary-value">{totalHours.toFixed(2)} hrs</span>
+              </div>
+            </div>
+          )}
+
+          {!loading && !error && rows.length === 0 ? (
+            <EmptyState title="No hay registros de horas extra." />
+          ) : (
+            <div className="ag-theme-alpine" style={{ width: '100%' }}>
+              <AgGridReact
+                theme="legacy"
+                rowData={rows}
+                columnDefs={columnDefs}
+                pagination={false}
+                suppressPaginationPanel={true}
+                domLayout="autoHeight"
+                animateRows={true}
+                rowHeight={52}
+                headerHeight={52}
+                defaultColDef={{
+                  filter: true,
+                  floatingFilter: false,
+                  menuTabs: ['filterMenuTab'],
+                  resizable: true,
+                }}
+                overlayLoadingTemplate={
+                  '<span style="color:var(--accent-primary);font-family:Inter,sans-serif;font-size:14px">Cargando banco de horas…</span>'
+                }
+                overlayNoRowsTemplate={
+                  '<span style="color:var(--text-muted);font-family:Inter,sans-serif;font-size:14px">No hay registros de horas extra</span>'
+                }
+              />
+            </div>
+          )}
+        </GlassCard>
       </div>
-    </div>
+    </PageShell>
   );
 };
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { CreditCard, CircleNotch } from '@phosphor-icons/react';
+import { GlassCard, Button } from './ui';
+import './Operaciones/Operaciones.css';
 
 interface Employee {
   no_nomina: string;
@@ -13,7 +15,7 @@ interface LoanFormProps {
 
 const LoanForm: React.FC<LoanFormProps> = ({ onLoanAdded }) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  
+
   const [empleado, setEmpleado] = useState('');
   const [montoTotal, setMontoTotal] = useState('');
   const [abonoSemanal, setAbonoSemanal] = useState('');
@@ -43,7 +45,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ onLoanAdded }) => {
     try {
       const selectedEmployee = employees.find(emp => emp.no_nomina === empleado || emp.nombre === empleado);
       if (!selectedEmployee) {
-        setStatus({ type: 'error', message: 'Employee not found. Please select a valid employee.' });
+        setStatus({ type: 'error', message: 'Empleado no encontrado. Seleccione uno válido.' });
         setIsLoading(false);
         return;
       }
@@ -55,9 +57,8 @@ const LoanForm: React.FC<LoanFormProps> = ({ onLoanAdded }) => {
         abono_semanal: parseFloat(abonoSemanal),
         pagos_realizados: parseInt(pagosRealizados, 10),
       });
-      
-      setStatus({ type: 'success', message: 'Loan successfully registered!' });
-      // Reset form
+
+      setStatus({ type: 'success', message: 'Préstamo registrado correctamente.' });
       setEmpleado('');
       setMontoTotal('');
       setAbonoSemanal('');
@@ -66,9 +67,9 @@ const LoanForm: React.FC<LoanFormProps> = ({ onLoanAdded }) => {
         onLoanAdded();
       }
     } catch (err: any) {
-      setStatus({ 
-        type: 'error', 
-        message: err.response?.data?.detail || 'Failed to register loan. Check your data.' 
+      setStatus({
+        type: 'error',
+        message: err.response?.data?.detail || 'Error al registrar préstamo. Verifique los datos.',
       });
     } finally {
       setIsLoading(false);
@@ -76,33 +77,33 @@ const LoanForm: React.FC<LoanFormProps> = ({ onLoanAdded }) => {
   };
 
   return (
-    <div className="form-card">
+    <GlassCard padding="lg" style={{ maxWidth: '520px', width: '100%' }}>
       <div className="form-header">
         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <CreditCard size={20} weight="duotone" color="var(--accent-primary)" />
-          Register Loan
+          Registrar Préstamo
         </h3>
-        <p>Enter details for a new employee loan.</p>
+        <p>Ingrese los datos del nuevo préstamo.</p>
       </div>
 
       {status && (
-        <div className={`status-message ${status.type}`}>
+        <div className={`op-status-banner op-status-banner--${status.type}`}>
           {status.message}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="data-form">
         <div className="form-group">
-          <label htmlFor="empleado">Employee</label>
+          <label htmlFor="empleado">Empleado</label>
           <input
-            list="employee-options"
+            list="employee-options-loan"
             id="empleado"
             value={empleado}
             onChange={(e) => setEmpleado(e.target.value)}
-            placeholder="Search by ID or Name..."
+            placeholder="Buscar por No. o Nombre…"
             required
           />
-          <datalist id="employee-options">
+          <datalist id="employee-options-loan">
             {employees.map((emp) => (
               <option key={emp.no_nomina} value={emp.no_nomina}>
                 {emp.nombre}
@@ -113,7 +114,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ onLoanAdded }) => {
 
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="montoTotal">Total Amount</label>
+            <label htmlFor="montoTotal">Monto Total</label>
             <input
               type="number"
               id="montoTotal"
@@ -124,9 +125,9 @@ const LoanForm: React.FC<LoanFormProps> = ({ onLoanAdded }) => {
               required
             />
           </div>
-          
+
           <div className="form-group">
-            <label htmlFor="abonoSemanal">Weekly Deduction</label>
+            <label htmlFor="abonoSemanal">Descuento Semanal</label>
             <input
               type="number"
               id="abonoSemanal"
@@ -140,7 +141,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ onLoanAdded }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="pagosRealizados">Payments Made</label>
+          <label htmlFor="pagosRealizados">Pagos Realizados</label>
           <input
             type="number"
             id="pagosRealizados"
@@ -152,15 +153,15 @@ const LoanForm: React.FC<LoanFormProps> = ({ onLoanAdded }) => {
           />
         </div>
 
-        <button type="submit" className="submit-button" disabled={isLoading}>
+        <Button type="submit" variant="primary" disabled={isLoading} style={{ width: '100%' }}>
           {isLoading ? (
-            <><CircleNotch className="animate-spin" size={18} /> Registering...</>
+            <><CircleNotch className="animate-spin" size={18} /> Registrando…</>
           ) : (
-            <><CreditCard weight="fill" size={18} /> Register Loan</>
+            <><CreditCard weight="fill" size={18} /> Registrar Préstamo</>
           )}
-        </button>
+        </Button>
       </form>
-    </div>
+    </GlassCard>
   );
 };
 

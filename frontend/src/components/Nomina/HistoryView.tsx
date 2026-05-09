@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { ClockCounterClockwise, FolderOpen, MagnifyingGlass, WarningCircle } from '@phosphor-icons/react';
+import { MagnifyingGlass, WarningCircle, CircleNotch } from '@phosphor-icons/react';
 import { AgGridReact } from 'ag-grid-react';
 import type { ColDef, ValueGetterParams } from 'ag-grid-community';
 import api from '../../api/axios';
 import '../modules.css';
+import './Nomina.css';
 import QuickSearch from '../QuickSearch';
+import { PageShell, GlassCard, Button, EmptyState } from '../ui';
 
 import {
   hasVariations,
@@ -132,139 +134,102 @@ const HistoryView: React.FC = () => {
   }, [snapshots.length]);
 
   return (
-    <div className="module-page">
+    <PageShell
+      title="Historia de Nómina"
+      description="Auditoría inmutable de períodos de nómina permanentemente cerrados."
+    >
+      <div className="payroll-report">
 
-      {/* ── Header ── */}
-        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-          <ClockCounterClockwise size={32} weight="duotone" color="var(--accent-primary)" />
-          Historia de Nómina
-        </h1>
-        <p>Auditoría inmutable de períodos de nómina permanentemente cerrados.</p>
+        {/* ── Toolbar bar ── */}
+        <GlassCard padding="md" className="pr-toolbar-card">
+          <div className="pr-toolbar">
+            <div className="pr-toolbar-info">
+              <span className="pr-period-label">{periodLabel}</span>
+              <span className="pr-record-label">{recordLabel}</span>
+            </div>
+            <div className="pr-toolbar-controls">
+              <QuickSearch value={quickFilterText} onChange={setQuickFilterText} />
+              <label htmlFor="history-semana-input" className="pr-week-label">
+                Semana No.
+              </label>
+              <input
+                id="history-semana-input"
+                type="number"
+                placeholder="1 – 53"
+                min={1} max={53}
+                value={semanaInput}
+                onChange={e => setSemanaInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="pr-week-input"
+              />
+              <Button
+                id="history-search-btn"
+                variant="primary"
+                onClick={handleSearch}
+                disabled={loading || !semanaInput}
+              >
+                {loading
+                  ? <><CircleNotch className="animate-spin" size={16} /> Buscando…</>
+                  : <><MagnifyingGlass size={16} weight="duotone" /> Consultar</>
+                }
+              </Button>
+            </div>
+          </div>
+        </GlassCard>
 
-      {/* ── Search Bar ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '0.75rem',
-        background: 'var(--sidebar-bg)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: '12px', padding: '1rem 1.5rem',
-        marginBottom: '1.5rem', boxShadow: 'var(--shadow-md)',
-        flexWrap: 'wrap',
-      }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-inverse)', marginBottom: '0.15rem' }}>
-            {periodLabel}
+        {/* ── Error Banner ── */}
+        {error && (
+          <div className="pr-error-banner">
+            <WarningCircle size={18} weight="fill" />
+            {error}
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            {recordLabel}
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <QuickSearch value={quickFilterText} onChange={setQuickFilterText} />
-          <label htmlFor="history-semana-input"
-            style={{ fontSize: '0.85rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-            Semana No.
-          </label>
-          <input
-            id="history-semana-input"
-            type="number" placeholder="1 – 53" min={1} max={53}
-            value={semanaInput}
-            onChange={e => setSemanaInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            style={{
-              width: '90px', padding: '0.45rem 0.75rem', borderRadius: '8px',
-              border: '1px solid rgba(255,255,255,0.15)',
-              background: 'rgba(255,255,255,0.07)',
-              color: 'var(--text-inverse)', fontSize: '0.9rem', outline: 'none',
-            }}
+        )}
+
+        {/* ── AG Grid ── */}
+        {snapshots.length > 0 && (
+          <GlassCard padding="md">
+            <div className="ag-theme-alpine" style={{ width: '100%' }}>
+              <AgGridReact<PayrollSnapshot>
+                theme="legacy"
+                rowData={snapshots}
+                columnDefs={columnDefs}
+                pagination={false}
+                suppressPaginationPanel={true}
+                domLayout="autoHeight"
+                quickFilterText={quickFilterText}
+                animateRows={true}
+                rowHeight={52}
+                headerHeight={52}
+                defaultColDef={{
+                  filter: true,
+                  floatingFilter: false,
+                  menuTabs: ['filterMenuTab'],
+                  resizable: true
+                }}
+                rowStyle={{ borderBottom: '1px solid var(--bg-secondary)' }}
+                autoSizeStrategy={{ type: 'fitGridWidth' }}
+              />
+            </div>
+          </GlassCard>
+        )}
+
+        {/* ── Empty State (post-filter) ── */}
+        {!loading && semanaQueried !== null && snapshots.length === 0 && !error && (
+          <EmptyState
+            title={`Semana ${semanaQueried} sin variaciones`}
+            message="No se encontraron registros con variaciones. Todos los empleados tuvieron una semana limpia, o la nómina aún no se ha cerrado."
           />
-          <button
-            id="history-search-btn"
-            onClick={handleSearch}
-            disabled={loading || !semanaInput}
-            style={{
-              padding: '0.45rem 1.25rem', borderRadius: '8px', border: 'none',
-              background: loading ? 'rgba(79,70,229,0.5)' : 'var(--accent-primary)',
-              color: 'var(--color-white)', fontWeight: 600, fontSize: '0.875rem',
-              cursor: loading || !semanaInput ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease', boxShadow: '0 2px 8px var(--accent-shadow)',
-            }}>
-            {loading ? 'Buscando…' : 'Consultar'}
-          </button>
-        </div>
-      </div>
+        )}
 
-      {/* ── Error Banner ── */}
-      {error && (
-        <div style={{
-          background: 'var(--error-bg)', border: '1px solid var(--error-border)',
-          borderRadius: '8px', padding: '0.75rem 1rem',
-          color: 'var(--error-text)', fontSize: '0.875rem', marginBottom: '1rem',
-          display: 'flex', alignItems: 'center', gap: '0.5rem'
-        }}>
-          <WarningCircle size={18} weight="fill" />
-          {error}
-        </div>
-      )}
-
-      {/* ── AG Grid ── */}
-      {snapshots.length > 0 && (
-        <div className="eh-grid-wrapper" style={{ padding: '1.5rem' }}>
-          <div className="ag-theme-alpine" style={{ width: '100%' }}>
-            <AgGridReact<PayrollSnapshot>
-              theme="legacy"
-              rowData={snapshots}
-              columnDefs={columnDefs}
-              pagination={false}
-              suppressPaginationPanel={true}
-              domLayout="autoHeight"
-              quickFilterText={quickFilterText}
-              animateRows={true}
-              rowHeight={52}
-              headerHeight={52}
-              defaultColDef={{ 
-                filter: true,
-                floatingFilter: false,
-                menuTabs: ['filterMenuTab'],
-                resizable: true 
-              }}
-              rowStyle={{ borderBottom: '1px solid var(--bg-secondary)' }}
-              autoSizeStrategy={{ type: 'fitGridWidth' }}
-            />
+        {/* ── Initial Prompt ── */}
+        {semanaQueried === null && !loading && (
+          <div className="pr-prompt">
+            <MagnifyingGlass size={48} weight="duotone" color="var(--color-accent)" />
+            <p>Ingresa el número de semana que deseas auditar y presiona <strong>Consultar</strong>.</p>
           </div>
-        </div>
-      )}
-
-      {/* ── Empty State (post-filter) ── */}
-      {!loading && semanaQueried !== null && snapshots.length === 0 && !error && (
-        <div style={{
-          textAlign: 'center', padding: '4rem 2rem',
-          background: 'var(--card-bg)', border: '1px solid var(--border-color)',
-          borderRadius: '12px', color: 'var(--text-muted)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center'
-        }}>
-          <FolderOpen size={48} weight="duotone" style={{ marginBottom: '1rem', color: 'var(--text-muted)' }} />
-          <p style={{ margin: 0, fontSize: '0.95rem' }}>
-            No se encontraron registros con variaciones para la Semana {semanaQueried}.<br />
-            Todos los empleados tuvieron una semana limpia, o la nómina aún no se ha cerrado.
-          </p>
-        </div>
-      )}
-
-      {/* ── Initial Prompt ── */}
-      {semanaQueried === null && !loading && (
-        <div style={{
-          textAlign: 'center', padding: '4rem 2rem',
-          background: 'var(--card-bg)', border: '1px solid var(--border-color)',
-          borderRadius: '12px', color: 'var(--text-muted)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center'
-        }}>
-          <MagnifyingGlass size={48} weight="duotone" style={{ marginBottom: '1rem', color: 'var(--accent-primary)' }} />
-          <p style={{ margin: 0, fontSize: '0.95rem' }}>
-            Ingresa el número de semana que deseas auditar and presiona <strong>Consultar</strong>.
-          </p>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </PageShell>
   );
 };
 
