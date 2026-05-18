@@ -810,9 +810,12 @@ class LoanBusinessRuleTests(APITestCase):
     loans_url = '/api/payroll/loans/'
 
     def setUp(self):
-        self.hr_group = Group.objects.get_or_create(name=HR_CAPTURE)[0]
+        # Finance is required because PATCH on /loans/{id}/ is gated to FINANCE_ADMIN
+        # (Phase D action-level permissions). HR still works for the POST cases via
+        # IsPayrollOperator inheritance.
+        self.finance_group = Group.objects.get_or_create(name=FINANCE_ADMIN)[0]
         self.user = User.objects.create_user(username='loan_tester', password='testpassword')
-        self.user.groups.add(self.hr_group)
+        self.user.groups.add(self.finance_group)
         self.client.force_authenticate(user=self.user)
         self.schedule = Schedule.objects.create(time_range="08:00-18:00")
         self.employee = Employee.objects.create(
