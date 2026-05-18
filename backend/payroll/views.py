@@ -1,9 +1,21 @@
+from datetime import date as _date
+
 from django.db import transaction
+from django.utils.dateparse import parse_date
 from rest_framework import viewsets, views, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import APIException
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import Employee, IncidenceCatalog, IncidenceRecord, Loan, ExtraHourBank, PayrollSnapshot
+from .models import (
+    Employee,
+    IncidenceCatalog,
+    IncidenceRecord,
+    Loan,
+    ExtraHourBank,
+    PayrollClosure,
+    PayrollSnapshot,
+)
 from .permissions import (
     IsFinanceAdmin,
     IsPayrollOperator,
@@ -57,6 +69,12 @@ def _parse_optional_year(raw_year):
         return None, {'error': 'year must be between 1 and 9999'}
 
     return target_year, None
+
+
+class WeekClosedConflict(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = 'La semana está cerrada; no se pueden registrar ni modificar incidencias.'
+    default_code = 'week_closed'
 
 
 class CurrentUserView(views.APIView):
@@ -188,7 +206,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-class IncidenceCatalogViewSet(viewsets.ModelViewSet):
+class IncidenceCatalogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = IncidenceCatalog.objects.all()
     serializer_class = IncidenceCatalogSerializer
     permission_classes = [IsAuthenticated, IsPayrollOperator]
@@ -198,12 +216,52 @@ class IncidenceRecordViewSet(viewsets.ModelViewSet):
     serializer_class = IncidenceRecordSerializer
     permission_classes = [IsAuthenticated, IsPayrollOperator]
 
+    @staticmethod
+    def _coerce_fecha(value):
+        if isinstance(value, _date):
+            return value
+        if isinstance(value, str):
+            return parse_date(value)
+        return None
+
+    def _ensure_instance_week_open(self, instance):
+        iso_year = instance.fecha.isocalendar()[0]
+        if PayrollClosure.objects.filter(
+            iso_year=iso_year, semana_num=instance.semana_num
+        ).exists():
+            raise WeekClosedConflict()
+
+    def _ensure_payload_week_open(self, fecha):
+        if not fecha:
+            return
+        iso_year, semana_num, _ = fecha.isocalendar()
+        if PayrollClosure.objects.filter(
+            iso_year=iso_year, semana_num=semana_num
+        ).exists():
+            raise WeekClosedConflict()
+
+    def create(self, request, *args, **kwargs):
+        self._ensure_payload_week_open(self._coerce_fecha(request.data.get('fecha')))
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        self._ensure_instance_week_open(self.get_object())
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        self._ensure_instance_week_open(self.get_object())
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self._ensure_instance_week_open(self.get_object())
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=False, methods=['post'], url_path='bulk_asueto')
     def bulk_asueto(self, request):
         fecha_str = request.data.get('fecha')
         if not fecha_str:
             return Response({'error': 'fecha is required'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         import datetime
         from decimal import Decimal
         try:
@@ -211,6 +269,8 @@ class IncidenceRecordViewSet(viewsets.ModelViewSet):
             semana_num = fecha.isocalendar()[1]
         except ValueError:
             return Response({'error': 'Invalid fecha format, should be YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+
+        self._ensure_payload_week_open(fecha)
 
         try:
             catalog = IncidenceCatalog.objects.get(abreviatura='ASU')
@@ -249,8 +309,15 @@ class LoanViewSet(viewsets.ModelViewSet):
     queryset = Loan.objects.all()
     serializer_class = LoanSerializer
     permission_classes = [IsAuthenticated, IsPayrollOperator]
+    http_method_names = ['get', 'post', 'put', 'patch', 'head', 'options']
 
-class ExtraHourBankViewSet(viewsets.ModelViewSet):
+    def get_permissions(self):
+        if self.action in ('update', 'partial_update'):
+            return [IsAuthenticated(), IsFinanceAdmin()]
+        return super().get_permissions()
+
+
+class ExtraHourBankViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ExtraHourBank.objects.all()
     serializer_class = ExtraHourBankSerializer
     permission_classes = [IsAuthenticated, IsPayrollOperator]
