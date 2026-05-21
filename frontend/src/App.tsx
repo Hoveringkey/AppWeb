@@ -24,6 +24,7 @@ import LoansView from './components/Operaciones/LoansView';
 import PayrollView from './components/Nomina/PayrollView';
 import ExtraHoursView from './components/Nomina/ExtraHoursView';
 import HistoryView from './components/Nomina/HistoryView';
+import OvertimeScheduleView from './components/Nomina/OvertimeScheduleView';
 
 // ── Layout shell: Navbar + page content ────────────────────
 const AppLayout: React.FC = () => (
@@ -63,6 +64,7 @@ const App: React.FC = () => (
         {/* Nómina */}
         <Route path="nomina/calcular" element={<PayrollView />} />
         <Route path="nomina/horas-extra" element={<ExtraHoursView />} />
+        <Route path="nomina/tiempo-extra-programado" element={<OvertimeScheduleView />} />
         <Route path="nomina/historia" element={<HistoryView />} />
       </Route>
 

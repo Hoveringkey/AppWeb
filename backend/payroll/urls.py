@@ -14,6 +14,12 @@ from .views import (
     DashboardMetricsView,
     CurrentWeekView
 )
+from .overtime_views import (
+    DailyOvertimeAssignmentViewSet,
+    OvertimePenaltyViewSet,
+    OvertimeProfileViewSet,
+    WeeklyOvertimeScheduleViewSet,
+)
 
 router = DefaultRouter()
 router.register(r'employees', EmployeeViewSet, basename='EmployeeViewSet')
@@ -22,6 +28,10 @@ router.register(r'incidence-records', IncidenceRecordViewSet)
 router.register(r'loans', LoanViewSet)
 router.register(r'extra-hour-banks', ExtraHourBankViewSet)
 router.register(r'snapshots', PayrollSnapshotViewSet, basename='payrollsnapshot')
+router.register(r'overtime/profiles', OvertimeProfileViewSet, basename='overtime-profile')
+router.register(r'overtime/schedules', WeeklyOvertimeScheduleViewSet, basename='overtime-schedule')
+router.register(r'overtime/assignments', DailyOvertimeAssignmentViewSet, basename='overtime-assignment')
+router.register(r'overtime/penalties', OvertimePenaltyViewSet, basename='overtime-penalty')
 
 urlpatterns = [
     path('', include(router.urls)),

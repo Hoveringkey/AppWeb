@@ -128,3 +128,322 @@
   color: var(--color-text-muted);
   font-size: 0.95rem;
 }
+
+/* ============================================
+   NÓMINA — Programar Tiempo Extra
+   ============================================ */
+.overtime-screen-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.overtime-section-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+.overtime-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.overtime-toolbar-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.overtime-toolbar-fields label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  gap: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.overtime-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.overtime-status-badge {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: var(--font-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.overtime-status-DRAFT { background: #ffe9a8; color: #8a5a00; }
+.overtime-status-PUBLISHED { background: #b6e8c4; color: #1b5e20; }
+.overtime-status-LOCKED { background: #d0d0d0; color: #444; }
+
+.overtime-grid-wrapper {
+  overflow-x: auto;
+}
+
+.overtime-grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.85rem;
+}
+
+.overtime-grid th,
+.overtime-grid td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.overtime-grid th {
+  background: var(--color-surface-strong);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+}
+
+.overtime-grid-date {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-weight: var(--font-medium);
+  margin-top: 0.15rem;
+}
+
+.overtime-grid td:first-child,
+.overtime-grid td:nth-child(2),
+.overtime-grid th:first-child,
+.overtime-grid th:nth-child(2) {
+  text-align: left;
+}
+
+.overtime-cell {
+  cursor: pointer;
+  user-select: none;
+  min-width: 56px;
+  font-weight: var(--font-semibold);
+  border-radius: var(--radius-sm);
+}
+
+.overtime-cell:hover:not(.overtime-cell-readonly) {
+  background: var(--color-accent-soft);
+}
+
+.overtime-cell-readonly {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.overtime-cell-filled {
+  background: #e0f0ff;
+  color: #0d4a8a;
+}
+
+.overtime-cell-txt {
+  background: #f3e0ff;
+  color: #5a1b8a;
+}
+
+.overtime-row-penalized {
+  background: #ffe5e5;
+}
+
+.overtime-grid-total {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-semibold);
+}
+
+.overtime-grid-note {
+  margin: 0.75rem 0 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* ---- PROFILE MANAGER ---- */
+.overtime-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--color-surface-strong);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  margin-bottom: 1rem;
+}
+
+.overtime-profile-form-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.overtime-profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 1;
+  min-width: 180px;
+}
+
+.overtime-profile-checkbox {
+  flex-direction: row;
+  align-items: center;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  min-width: 80px;
+  flex: 0 0 auto;
+}
+
+.overtime-profile-select,
+.overtime-profile-input {
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.overtime-weekday-toggles {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.overtime-weekday-btn {
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.overtime-weekday-btn.active {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+
+.overtime-profile-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.overtime-profile-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-strong);
+  margin-bottom: 0.5rem;
+}
+
+.overtime-profile-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  outline: none;
+  font-size: 0.9rem;
+}
+
+.overtime-profile-table-wrapper {
+  overflow-x: auto;
+}
+
+.overtime-profile-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.overtime-profile-table th,
+.overtime-profile-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.overtime-profile-table th {
+  background: var(--color-surface-strong);
+  font-weight: var(--font-semibold);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.overtime-profile-actions-cell {
+  display: flex;
+  gap: 0.35rem;
+}
+
+/* ---- PRINT ---- */
+.overtime-print-only { display: none; }
+
+@media print {
+  body { background: white; color: black; }
+  .navbar,
+  .pr-toolbar,
+  .overtime-toolbar,
+  .overtime-screen-grid > .overtime-glass-edit,
+  .pr-prompt,
+  button,
+  .axis-button,
+  .nomina-summary-grid,
+  .overtime-grid-wrapper,
+  .overtime-profile-form,
+  .overtime-profile-search,
+  .overtime-profile-table-wrapper {
+    display: none !important;
+  }
+  .overtime-print-only { display: block; }
+  .overtime-print-title {
+    text-align: center;
+    margin-bottom: 0.5rem;
+    font-size: 14pt;
+    color: #000;
+  }
+  .overtime-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+  }
+  .overtime-print-table th,
+  .overtime-print-table td {
+    border: 1px solid #000;
+    padding: 0.4rem 0.5rem;
+    color: #000;
+  }
+  .overtime-print-table th {
+    background: #eee;
+    font-weight: bold;
+  }
+  .overtime-print-signature { width: 18%; }
+  @page { size: landscape; margin: 1cm; }
+}
