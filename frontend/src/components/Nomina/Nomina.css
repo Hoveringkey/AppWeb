@@ -445,5 +445,13 @@
     font-weight: bold;
   }
   .overtime-print-signature { width: 18%; }
+  .overtime-print-policy {
+    margin-top: 0.75rem;
+    font-size: 9pt;
+    font-style: italic;
+    color: #000;
+    text-align: center;
+    page-break-inside: avoid;
+  }
   @page { size: landscape; margin: 1cm; }
 }

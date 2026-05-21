@@ -1,6 +1,6 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, MethodNotAllowed
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
@@ -20,6 +20,7 @@ from .overtime_serializers import (
     WeeklyOvertimeScheduleSerializer,
 )
 from .overtime_services import (
+    OvertimeInvalidWeekError,
     OvertimeScheduleLockedError,
     OvertimeWeekClosedError,
     apply_overtime_schedule_to_incidences,
@@ -80,6 +81,12 @@ class WeeklyOvertimeScheduleViewSet(viewsets.ModelViewSet):
                 return qs.none()
         return qs
 
+    def create(self, request, *args, **kwargs):
+        raise MethodNotAllowed(
+            method='POST',
+            detail='Usa /api/payroll/overtime/schedules/generate/ para crear planillas.',
+        )
+
     def _ensure_mutable(self, schedule):
         _ensure_week_open(schedule.iso_year, schedule.iso_week)
         if schedule.status != WeeklyOvertimeSchedule.DRAFT:
@@ -106,6 +113,8 @@ class WeeklyOvertimeScheduleViewSet(viewsets.ModelViewSet):
 
         try:
             schedule = generate_overtime_schedule(iso_year, iso_week, user=request.user)
+        except OvertimeInvalidWeekError as exc:
+            return Response({'iso_week': [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
         except OvertimeWeekClosedError:
             raise WeekClosedConflict()
         except OvertimeScheduleLockedError:
@@ -170,6 +179,21 @@ class DailyOvertimeAssignmentViewSet(viewsets.ModelViewSet):
         _ensure_week_open(schedule.iso_year, schedule.iso_week)
         if schedule.status != WeeklyOvertimeSchedule.DRAFT:
             raise ScheduleLockedConflict()
+
+    def create(self, request, *args, **kwargs):
+        schedule_id = request.data.get('schedule')
+        if schedule_id:
+            try:
+                schedule = WeeklyOvertimeSchedule.objects.only(
+                    'iso_year', 'iso_week', 'status'
+                ).get(pk=schedule_id)
+            except WeeklyOvertimeSchedule.DoesNotExist:
+                schedule = None
+            if schedule is not None:
+                _ensure_week_open(schedule.iso_year, schedule.iso_week)
+                if schedule.status != WeeklyOvertimeSchedule.DRAFT:
+                    raise ScheduleLockedConflict()
+        return super().create(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         self._ensure_mutable(self.get_object())

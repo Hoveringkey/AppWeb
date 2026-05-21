@@ -59,6 +59,9 @@ const OvertimeSchedulePrint: React.FC<PrintProps> = ({ isoYear, isoWeek, weekDat
         ))}
       </tbody>
     </table>
+    <p className="overtime-print-policy">
+      Política: si un empleado falta o tiene permiso sin goce, pierde el derecho a tiempo extra durante la siguiente semana.
+    </p>
   </div>
 );
 

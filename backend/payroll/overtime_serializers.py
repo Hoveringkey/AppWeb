@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 
 from rest_framework import serializers
@@ -13,6 +14,16 @@ from .overtime_services import (
     HOURS_TIPO_2,
     get_overtime_week_dates,
 )
+
+
+def _validate_iso_year_week(iso_year, iso_week):
+    """Levanta ValidationError si (iso_year, iso_week) no es una semana ISO válida."""
+    try:
+        datetime.date.fromisocalendar(int(iso_year), int(iso_week), 1)
+    except (ValueError, TypeError) as exc:
+        raise serializers.ValidationError({
+            'iso_week': f'La semana ISO {iso_week} no existe en el año {iso_year}.'
+        }) from exc
 
 
 class OvertimeProfileSerializer(serializers.ModelSerializer):
@@ -143,7 +154,8 @@ class DailyOvertimeAssignmentSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        validated_data.setdefault('source', DailyOvertimeAssignment.MANUAL)
+        # Force MANUAL: the client must never be able to inject source=AUTO.
+        validated_data['source'] = DailyOvertimeAssignment.MANUAL
         return super().create(validated_data)
 
 
@@ -168,7 +180,18 @@ class WeeklyOvertimeScheduleSerializer(serializers.ModelSerializer):
     def get_week_dates(self, obj):
         return [d.isoformat() for d in get_overtime_week_dates(obj.iso_year, obj.iso_week)]
 
+    def validate(self, attrs):
+        iso_year = attrs.get('iso_year', getattr(self.instance, 'iso_year', None))
+        iso_week = attrs.get('iso_week', getattr(self.instance, 'iso_week', None))
+        if iso_year is not None and iso_week is not None:
+            _validate_iso_year_week(iso_year, iso_week)
+        return attrs
+
 
 class GenerateScheduleSerializer(serializers.Serializer):
     iso_year = serializers.IntegerField(min_value=1, max_value=9999)
     iso_week = serializers.IntegerField(min_value=1, max_value=53)
+
+    def validate(self, attrs):
+        _validate_iso_year_week(attrs['iso_year'], attrs['iso_week'])
+        return attrs

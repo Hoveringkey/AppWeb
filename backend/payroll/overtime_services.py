@@ -150,8 +150,19 @@ class OvertimeWeekClosedError(Exception):
     """La semana objetivo ya tiene PayrollClosure: no se puede operar."""
 
 
+class OvertimeInvalidWeekError(Exception):
+    """La combinación (iso_year, iso_week) no corresponde a una semana ISO real."""
+
+
 @transaction.atomic
 def generate_overtime_schedule(iso_year, iso_week, user=None):
+    try:
+        datetime.date.fromisocalendar(int(iso_year), int(iso_week), 1)
+    except (ValueError, TypeError) as exc:
+        raise OvertimeInvalidWeekError(
+            f"Semana ISO {iso_week} no existe en el año {iso_year}."
+        ) from exc
+
     if PayrollClosure.objects.filter(iso_year=iso_year, semana_num=iso_week).exists():
         raise OvertimeWeekClosedError()
 

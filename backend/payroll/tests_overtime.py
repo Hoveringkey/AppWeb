@@ -519,3 +519,76 @@ class OvertimeProfileValidationTests(APITestCase):
             'profile_type': OvertimeProfile.ROTATION_A,
         }, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+
+
+class OvertimePRReviewFixesTests(APITestCase):
+    """Cobertura adicional para los puntos del review del PR #29."""
+
+    iso_year = ANCHOR_YEAR
+    iso_week = ANCHOR_WEEK
+
+    def setUp(self):
+        self.user = _make_user()
+        self.client.force_authenticate(self.user)
+        _mk_catalogs()
+        self.emp = _mk_emp('REV-1', 'Review')
+        OvertimeProfile.objects.create(empleado=self.emp, profile_type=OvertimeProfile.ROTATION_A)
+
+    def test_generate_rejects_nonexistent_iso_week_53(self):
+        """2025 tiene 52 semanas ISO; iso_week=53 debe ser 400, no 500."""
+        resp = self.client.post('/api/payroll/overtime/schedules/generate/', {
+            'iso_year': 2025, 'iso_week': 53,
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        self.assertIn('iso_week', resp.data)
+
+    def test_generate_accepts_valid_iso_week_53_in_2026(self):
+        """2026 sí tiene 53 semanas ISO; iso_week=53 es válido."""
+        resp = self.client.post('/api/payroll/overtime/schedules/generate/', {
+            'iso_year': 2026, 'iso_week': 53,
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+
+    def test_assignment_create_blocked_by_payroll_closure(self):
+        sched = generate_overtime_schedule(self.iso_year, self.iso_week, user=self.user)
+        PayrollClosure.objects.create(iso_year=self.iso_year, semana_num=self.iso_week)
+        week_dates = get_overtime_week_dates(self.iso_year, self.iso_week)
+        resp = self.client.post('/api/payroll/overtime/assignments/', {
+            'schedule': sched.id,
+            'empleado': self.emp.pk,
+            'fecha': week_dates[4].isoformat(),
+            'assignment_type': DailyOvertimeAssignment.TIPO_1,
+            'hours': '8.00',
+            'compensation_type': DailyOvertimeAssignment.PAYROLL,
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT, resp.content)
+
+    def test_assignment_create_ignores_client_source_auto(self):
+        sched = generate_overtime_schedule(self.iso_year, self.iso_week, user=self.user)
+        week_dates = get_overtime_week_dates(self.iso_year, self.iso_week)
+        resp = self.client.post('/api/payroll/overtime/assignments/', {
+            'schedule': sched.id,
+            'empleado': self.emp.pk,
+            'fecha': week_dates[4].isoformat(),
+            'assignment_type': DailyOvertimeAssignment.TIPO_1,
+            'hours': '8.00',
+            'compensation_type': DailyOvertimeAssignment.PAYROLL,
+            'source': DailyOvertimeAssignment.AUTO,
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        a = DailyOvertimeAssignment.objects.get(
+            schedule=sched, empleado=self.emp, fecha=week_dates[4]
+        )
+        self.assertEqual(a.source, DailyOvertimeAssignment.MANUAL)
+
+    def test_direct_post_to_schedules_returns_405(self):
+        resp = self.client.post('/api/payroll/overtime/schedules/', {
+            'iso_year': self.iso_year, 'iso_week': self.iso_week,
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED, resp.content)
+        # Confirma que la planilla no quedó creada por la vía directa
+        self.assertFalse(
+            WeeklyOvertimeSchedule.objects.filter(
+                iso_year=self.iso_year, iso_week=self.iso_week
+            ).exists()
+        )
