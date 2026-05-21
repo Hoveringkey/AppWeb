@@ -20,17 +20,14 @@ export const formatTimeRange = (input: string): string => {
 
     if (isNaN(h)) return time;
 
-    // Smart inference for AM/PM if only single digit or small number
-    // If it's an end time and it's smaller than start time (e.g. 8 - 5), assume PM for end
+    // Infer PM for end time only when it makes sense for a daytime shift.
+    // Night shifts (startHour >= 18): end time is next-day morning — never add 12.
+    // Day shifts (startHour < 12): if end < start and end <= 12, infer PM (e.g. "8-5" → 17:00).
     if (isEnd && startTimeHour !== undefined) {
-      if (h < startTimeHour && h <= 12) {
+      const isNightShift = startTimeHour >= 18;
+      if (!isNightShift && h < startTimeHour && h <= 12) {
         h += 12;
       }
-    } else {
-      // For start time or general: if 1-6 assume PM unless specified, but for shifts 7-11 usually AM
-      // This is a heuristic. Let's keep it simple: 
-      // If user types "8", "08:00". If "17", "17:00".
-      // If "5" as end time and start was "8", make it 17.
     }
 
     const hh = String(h).padStart(2, '0');
