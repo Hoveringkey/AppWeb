@@ -61,18 +61,29 @@ interface CycleStep {
 }
 
 const CYCLE: CycleStep[] = [
-  { assignment_type: 'TIPO_1', hours: '8.00', compensation_type: 'PAYROLL', label: '1º' },
   { assignment_type: 'TIPO_2', hours: '4.00', compensation_type: 'PAYROLL', label: '2º' },
   { assignment_type: 'CUSTOM', hours: '4.00', compensation_type: 'TXT', label: 'TxT' },
 ];
 
 const DAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
+// Devuelve el índice del paso actual en CYCLE, o -1 si la asignación
+// no es ciclable (e.g. TIPO_1 heredada del perfil SATURDAY_OR_MONDAY_8H).
 const matchStep = (a: OvertimeAssignment): number => {
-  if (a.assignment_type === 'TIPO_1' && a.compensation_type === 'PAYROLL') return 0;
-  if (a.assignment_type === 'TIPO_2' && a.compensation_type === 'PAYROLL') return 1;
-  if (a.compensation_type === 'TXT') return 2;
-  return 0;
+  if (a.assignment_type === 'TIPO_2' && a.compensation_type === 'PAYROLL') return 0;
+  if (a.compensation_type === 'TXT') return 1;
+  return -1;
+};
+
+const getCellLabel = (a: OvertimeAssignment): string => {
+  if (a.assignment_type === 'TIPO_1' && a.compensation_type === 'PAYROLL') return '1º';
+  if (a.assignment_type === 'TIPO_2' && a.compensation_type === 'PAYROLL') return '2º';
+  if (a.compensation_type === 'TXT') return 'TxT';
+  if (a.assignment_type === 'CUSTOM' && a.compensation_type === 'PAYROLL') {
+    const h = parseFloat(a.hours);
+    return `Cust ${Number.isFinite(h) ? h : a.hours}h`;
+  }
+  return '';
 };
 
 interface RowData {
@@ -240,16 +251,22 @@ const OvertimeScheduleView: React.FC = () => {
         });
       } else {
         const idx = matchStep(current);
-        const nextIdx = idx + 1;
-        if (nextIdx >= CYCLE.length) {
+        if (idx < 0) {
+          // Fuera del ciclo manual (TIPO_1 del perfil sábado/lunes, CUSTOM PAYROLL legacy):
+          // un click la borra directamente.
           await api.delete(`/api/payroll/overtime/assignments/${current.id}/`);
         } else {
-          const step = CYCLE[nextIdx];
-          await api.patch(`/api/payroll/overtime/assignments/${current.id}/`, {
-            assignment_type: step.assignment_type,
-            hours: step.hours,
-            compensation_type: step.compensation_type,
-          });
+          const nextIdx = idx + 1;
+          if (nextIdx >= CYCLE.length) {
+            await api.delete(`/api/payroll/overtime/assignments/${current.id}/`);
+          } else {
+            const step = CYCLE[nextIdx];
+            await api.patch(`/api/payroll/overtime/assignments/${current.id}/`, {
+              assignment_type: step.assignment_type,
+              hours: step.hours,
+              compensation_type: step.compensation_type,
+            });
+          }
         }
       }
       await loadSchedule(schedule.iso_year, schedule.iso_week);
@@ -420,7 +437,7 @@ const OvertimeScheduleView: React.FC = () => {
                           const key = `${r.empleado}-${d}`;
                           const readOnly = !isDraft || !canEdit;
                           const label = a
-                            ? CYCLE[matchStep(a)].label + (a.is_forced ? '*' : '')
+                            ? getCellLabel(a) + (a.is_forced ? '*' : '')
                             : '';
                           return (
                             <td

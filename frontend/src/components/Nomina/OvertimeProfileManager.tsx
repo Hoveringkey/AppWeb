@@ -1,17 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { MagnifyingGlass, FloppyDisk, Trash } from '@phosphor-icons/react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { MagnifyingGlass, FloppyDisk, Trash, CaretDown } from '@phosphor-icons/react';
 import api from '../../api/axios';
 import { Button, GlassCard, ErrorState } from '../ui';
 
 const PROFILE_TYPES: Array<{ value: string; label: string }> = [
   { value: 'ROTATION_A', label: 'Rotación A (lun-mié / mar-jue)' },
   { value: 'ROTATION_B', label: 'Rotación B (mar-jue / lun-mié)' },
-  { value: 'SATURDAY_MONDAY_8H', label: 'Sábado y Lunes 8h' },
+  { value: 'SATURDAY_OR_MONDAY_8H', label: 'Sábado o Lunes 8h' },
   { value: 'FIXED_4DAY', label: 'Fijo Lunes a Jueves' },
   { value: 'FIXED_CUSTOM', label: 'Personalizado' },
 ];
 
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const LEGACY_SATURDAY_MONDAY = 'SATURDAY_MONDAY_8H';
+const SATURDAY_OR_MONDAY = 'SATURDAY_OR_MONDAY_8H';
 
 interface Employee {
   no_nomina: string;
@@ -46,6 +48,9 @@ const emptyDraft = (): DraftState => ({
   is_active: true,
 });
 
+const normalizeProfileType = (t: string): string =>
+  t === LEGACY_SATURDAY_MONDAY ? SATURDAY_OR_MONDAY : t;
+
 const OvertimeProfileManager: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
   const [profiles, setProfiles] = useState<OvertimeProfile[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -55,6 +60,15 @@ const OvertimeProfileManager: React.FC<{ canEdit: boolean }> = ({ canEdit }) => 
   const [draft, setDraft] = useState<DraftState>(emptyDraft());
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Combobox de empleado
+  const [empSearch, setEmpSearch] = useState('');
+  const [empOpen, setEmpOpen] = useState(false);
+  const empBlurTimer = useRef<number | null>(null);
+
+  // Dropdown de tipo de perfil
+  const [typeOpen, setTypeOpen] = useState(false);
+  const typeBlurTimer = useRef<number | null>(null);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -102,6 +116,15 @@ const OvertimeProfileManager: React.FC<{ canEdit: boolean }> = ({ canEdit }) => 
     return employees.filter(e => !assigned.has(e.no_nomina));
   }, [employees, profiles, editingId]);
 
+  const filteredEmployeeOptions = useMemo(() => {
+    const q = empSearch.trim().toLowerCase();
+    if (!q) return employeeOptions;
+    return employeeOptions.filter(e =>
+      e.no_nomina.toLowerCase().includes(q) ||
+      e.nombre.toLowerCase().includes(q)
+    );
+  }, [employeeOptions, empSearch]);
+
   const toggleWeekday = (idx: number) => {
     setDraft(prev => {
       const next = new Set(prev.custom_weekdays);
@@ -110,21 +133,89 @@ const OvertimeProfileManager: React.FC<{ canEdit: boolean }> = ({ canEdit }) => 
     });
   };
 
+  const setSaturdayOrMondayDay = (day: 0 | 5) => {
+    setDraft(prev => ({ ...prev, custom_weekdays: [day], custom_daily_hours: '' }));
+  };
+
+  const selectEmployee = (e: Employee) => {
+    setDraft(prev => ({ ...prev, empleado: e.no_nomina, empleado_nombre: e.nombre }));
+    setEmpSearch('');
+    setEmpOpen(false);
+  };
+
+  const onEmpInputChange = (value: string) => {
+    // Si ya había selección, limpiarla cuando el usuario empieza a escribir.
+    if (draft.empleado) {
+      setDraft(prev => ({ ...prev, empleado: '', empleado_nombre: '' }));
+    }
+    setEmpSearch(value);
+    setEmpOpen(true);
+  };
+
+  const onEmpBlur = () => {
+    empBlurTimer.current = window.setTimeout(() => setEmpOpen(false), 150);
+  };
+  const onEmpFocus = () => {
+    if (empBlurTimer.current !== null) {
+      window.clearTimeout(empBlurTimer.current);
+      empBlurTimer.current = null;
+    }
+    setEmpOpen(true);
+  };
+
+  const selectProfileType = (value: string) => {
+    setDraft(prev => ({
+      ...prev,
+      profile_type: value,
+      // Reset campos dependientes para no arrastrar basura de un tipo a otro.
+      custom_weekdays: [],
+      custom_daily_hours: '',
+    }));
+    setTypeOpen(false);
+  };
+
+  const onTypeBlur = () => {
+    typeBlurTimer.current = window.setTimeout(() => setTypeOpen(false), 150);
+  };
+  const onTypeFocus = () => {
+    if (typeBlurTimer.current !== null) {
+      window.clearTimeout(typeBlurTimer.current);
+      typeBlurTimer.current = null;
+    }
+  };
+
+  const currentTypeLabel = useMemo(() => {
+    const found = PROFILE_TYPES.find(t => t.value === draft.profile_type);
+    return found ? found.label : draft.profile_type;
+  }, [draft.profile_type]);
+
   const startEdit = (p: OvertimeProfile) => {
+    const normalizedType = normalizeProfileType(p.profile_type);
+    let weekdays = Array.isArray(p.custom_weekdays) ? [...p.custom_weekdays] : [];
+    if (normalizedType === SATURDAY_OR_MONDAY) {
+      // Garantiza que el formulario abra con una selección válida (default Sábado).
+      if (weekdays.length !== 1 || (weekdays[0] !== 0 && weekdays[0] !== 5)) {
+        weekdays = [5];
+      }
+    }
     setEditingId(p.id);
     setDraft({
       empleado: p.empleado,
       empleado_nombre: p.empleado_nombre ?? employeesById[p.empleado] ?? '',
-      profile_type: p.profile_type,
-      custom_weekdays: p.custom_weekdays ?? [],
+      profile_type: normalizedType,
+      custom_weekdays: weekdays,
       custom_daily_hours: p.custom_daily_hours ?? '',
       is_active: p.is_active,
     });
+    setEmpSearch('');
+    setEmpOpen(false);
   };
 
   const resetForm = () => {
     setEditingId(null);
     setDraft(emptyDraft());
+    setEmpSearch('');
+    setEmpOpen(false);
   };
 
   const save = async () => {
@@ -132,17 +223,28 @@ const OvertimeProfileManager: React.FC<{ canEdit: boolean }> = ({ canEdit }) => 
       setError('Selecciona un empleado.');
       return;
     }
+    if (
+      draft.profile_type === SATURDAY_OR_MONDAY &&
+      (draft.custom_weekdays.length !== 1 ||
+        (draft.custom_weekdays[0] !== 0 && draft.custom_weekdays[0] !== 5))
+    ) {
+      setError('Selecciona Lunes o Sábado.');
+      return;
+    }
     setSaving(true);
     setError(null);
+    const isCustom = draft.profile_type === 'FIXED_CUSTOM';
+    const isSatOrMon = draft.profile_type === SATURDAY_OR_MONDAY;
     const payload: Record<string, unknown> = {
       empleado: draft.empleado,
       profile_type: draft.profile_type,
       is_active: draft.is_active,
-      custom_weekdays: draft.profile_type === 'FIXED_CUSTOM' ? draft.custom_weekdays : [],
-      custom_daily_hours:
-        draft.profile_type === 'FIXED_CUSTOM'
-          ? (draft.custom_daily_hours || '0')
-          : null,
+      custom_weekdays: isCustom
+        ? draft.custom_weekdays
+        : isSatOrMon
+          ? draft.custom_weekdays
+          : [],
+      custom_daily_hours: isCustom ? (draft.custom_daily_hours || '0') : null,
     };
     try {
       if (editingId !== null) {
@@ -176,6 +278,10 @@ const OvertimeProfileManager: React.FC<{ canEdit: boolean }> = ({ canEdit }) => 
     }
   };
 
+  const empInputValue = draft.empleado
+    ? `${draft.empleado} — ${draft.empleado_nombre}`
+    : empSearch;
+
   return (
     <GlassCard padding="md">
       <h3 className="overtime-section-title">Perfiles de Tiempo Extra</h3>
@@ -196,39 +302,78 @@ const OvertimeProfileManager: React.FC<{ canEdit: boolean }> = ({ canEdit }) => 
           <div className="overtime-profile-form-row">
             <label className="overtime-profile-field">
               <span>Empleado</span>
-              <select
-                className="overtime-profile-select"
-                value={draft.empleado}
-                onChange={e => {
-                  const no = e.target.value;
-                  setDraft(prev => ({
-                    ...prev,
-                    empleado: no,
-                    empleado_nombre: employeesById[no] ?? '',
-                  }));
-                }}
-                disabled={editingId !== null}
-              >
-                <option value="">— Selecciona —</option>
-                {employeeOptions.map(e => (
-                  <option key={e.no_nomina} value={e.no_nomina}>
-                    {e.no_nomina} — {e.nombre}
-                  </option>
-                ))}
-              </select>
+              <div className="overtime-profile-combobox">
+                <input
+                  type="text"
+                  className="overtime-profile-combobox-input"
+                  placeholder="Buscar empleado por número o nombre..."
+                  value={empInputValue}
+                  onChange={e => onEmpInputChange(e.target.value)}
+                  onFocus={onEmpFocus}
+                  onBlur={onEmpBlur}
+                  disabled={editingId !== null}
+                  autoComplete="off"
+                />
+                {empOpen && editingId === null && (
+                  <ul className="overtime-profile-combobox-list">
+                    {filteredEmployeeOptions.length === 0 && (
+                      <li className="overtime-profile-combobox-empty">
+                        Sin coincidencias
+                      </li>
+                    )}
+                    {filteredEmployeeOptions.slice(0, 50).map(e => (
+                      <li
+                        key={e.no_nomina}
+                        className="overtime-profile-combobox-option"
+                        onMouseDown={ev => ev.preventDefault()}
+                        onClick={() => selectEmployee(e)}
+                      >
+                        <span className="overtime-profile-combobox-option-num">
+                          {e.no_nomina}
+                        </span>
+                        <span className="overtime-profile-combobox-option-sep">—</span>
+                        <span className="overtime-profile-combobox-option-name">
+                          {e.nombre}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </label>
 
             <label className="overtime-profile-field">
               <span>Tipo de perfil</span>
-              <select
-                className="overtime-profile-select"
-                value={draft.profile_type}
-                onChange={e => setDraft(prev => ({ ...prev, profile_type: e.target.value }))}
-              >
-                {PROFILE_TYPES.map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
+              <div className="overtime-profile-typeselect">
+                <button
+                  type="button"
+                  className="overtime-profile-typeselect-trigger"
+                  onClick={() => setTypeOpen(o => !o)}
+                  onBlur={onTypeBlur}
+                  onFocus={onTypeFocus}
+                >
+                  <span>{currentTypeLabel}</span>
+                  <CaretDown size={14} weight="bold" />
+                </button>
+                {typeOpen && (
+                  <ul
+                    className="overtime-profile-typeselect-list"
+                    onMouseDown={ev => ev.preventDefault()}
+                  >
+                    {PROFILE_TYPES.map(t => (
+                      <li
+                        key={t.value}
+                        className={`overtime-profile-typeselect-option${
+                          t.value === draft.profile_type ? ' active' : ''
+                        }`}
+                        onClick={() => selectProfileType(t.value)}
+                      >
+                        {t.label}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </label>
 
             <label className="overtime-profile-field overtime-profile-checkbox">
@@ -240,6 +385,34 @@ const OvertimeProfileManager: React.FC<{ canEdit: boolean }> = ({ canEdit }) => 
               <span>Activo</span>
             </label>
           </div>
+
+          {draft.profile_type === SATURDAY_OR_MONDAY && (
+            <div className="overtime-profile-form-row">
+              <div className="overtime-profile-field">
+                <span>Día de 8 horas</span>
+                <div className="overtime-weekday-toggles">
+                  <button
+                    type="button"
+                    className={`overtime-weekday-btn${
+                      draft.custom_weekdays[0] === 0 ? ' active' : ''
+                    }`}
+                    onClick={() => setSaturdayOrMondayDay(0)}
+                  >
+                    Lunes
+                  </button>
+                  <button
+                    type="button"
+                    className={`overtime-weekday-btn${
+                      draft.custom_weekdays[0] === 5 ? ' active' : ''
+                    }`}
+                    onClick={() => setSaturdayOrMondayDay(5)}
+                  >
+                    Sábado
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {draft.profile_type === 'FIXED_CUSTOM' && (
             <div className="overtime-profile-form-row">
@@ -319,30 +492,43 @@ const OvertimeProfileManager: React.FC<{ canEdit: boolean }> = ({ canEdit }) => 
             {!loading && filteredProfiles.length === 0 && (
               <tr><td colSpan={canEdit ? 7 : 6}>Sin perfiles.</td></tr>
             )}
-            {filteredProfiles.map(p => (
-              <tr key={p.id}>
-                <td>{p.empleado}</td>
-                <td>{p.empleado_nombre ?? employeesById[p.empleado] ?? '—'}</td>
-                <td>{PROFILE_TYPES.find(t => t.value === p.profile_type)?.label ?? p.profile_type}</td>
-                <td>
-                  {p.profile_type === 'FIXED_CUSTOM'
-                    ? (p.custom_weekdays ?? []).map(d => WEEKDAY_LABELS[d]).join(', ')
-                    : '—'}
-                </td>
-                <td>{p.profile_type === 'FIXED_CUSTOM' ? p.custom_daily_hours ?? '—' : '—'}</td>
-                <td>{p.is_active ? 'Sí' : 'No'}</td>
-                {canEdit && (
-                  <td className="overtime-profile-actions-cell">
-                    <Button variant="ghost" size="sm" onClick={() => startEdit(p)}>
-                      Editar
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => remove(p)}>
-                      <Trash weight="bold" />
-                    </Button>
-                  </td>
-                )}
-              </tr>
-            ))}
+            {filteredProfiles.map(p => {
+              const normalized = normalizeProfileType(p.profile_type);
+              const typeLabel =
+                PROFILE_TYPES.find(t => t.value === normalized)?.label ?? p.profile_type;
+              let daysLabel: string = '—';
+              if (normalized === 'FIXED_CUSTOM') {
+                daysLabel = (p.custom_weekdays ?? []).map(d => WEEKDAY_LABELS[d]).join(', ');
+              } else if (normalized === SATURDAY_OR_MONDAY) {
+                const d = (p.custom_weekdays ?? [])[0];
+                daysLabel = d === 0 ? 'Lun' : d === 5 ? 'Sáb' : '—';
+              }
+              const hoursLabel = normalized === 'FIXED_CUSTOM'
+                ? (p.custom_daily_hours ?? '—')
+                : normalized === SATURDAY_OR_MONDAY
+                  ? '8.00'
+                  : '—';
+              return (
+                <tr key={p.id}>
+                  <td>{p.empleado}</td>
+                  <td>{p.empleado_nombre ?? employeesById[p.empleado] ?? '—'}</td>
+                  <td>{typeLabel}</td>
+                  <td>{daysLabel}</td>
+                  <td>{hoursLabel}</td>
+                  <td>{p.is_active ? 'Sí' : 'No'}</td>
+                  {canEdit && (
+                    <td className="overtime-profile-actions-cell">
+                      <Button variant="ghost" size="sm" onClick={() => startEdit(p)}>
+                        Editar
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => remove(p)}>
+                        <Trash weight="bold" />
+                      </Button>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
