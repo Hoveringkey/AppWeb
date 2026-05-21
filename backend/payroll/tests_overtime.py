@@ -592,3 +592,25 @@ class OvertimePRReviewFixesTests(APITestCase):
                 iso_year=self.iso_year, iso_week=self.iso_week
             ).exists()
         )
+
+    def test_schedule_patch_rejects_iso_year_change(self):
+        sched = generate_overtime_schedule(self.iso_year, self.iso_week, user=self.user)
+        resp = self.client.patch(
+            f'/api/payroll/overtime/schedules/{sched.id}/',
+            {'iso_year': 2027},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        sched.refresh_from_db()
+        self.assertEqual(sched.iso_year, self.iso_year)
+
+    def test_schedule_patch_rejects_iso_week_change(self):
+        sched = generate_overtime_schedule(self.iso_year, self.iso_week, user=self.user)
+        resp = self.client.patch(
+            f'/api/payroll/overtime/schedules/{sched.id}/',
+            {'iso_week': self.iso_week + 1},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        sched.refresh_from_db()
+        self.assertEqual(sched.iso_week, self.iso_week)

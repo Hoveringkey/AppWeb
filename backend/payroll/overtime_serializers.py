@@ -173,7 +173,8 @@ class WeeklyOvertimeScheduleSerializer(serializers.ModelSerializer):
             'assignments', 'penalties', 'week_dates',
         ]
         read_only_fields = [
-            'id', 'status', 'created_by', 'created_at', 'updated_at',
+            'id', 'iso_year', 'iso_week', 'status',
+            'created_by', 'created_at', 'updated_at',
             'published_at', 'locked_at', 'assignments', 'penalties', 'week_dates',
         ]
 

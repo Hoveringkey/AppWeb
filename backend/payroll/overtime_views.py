@@ -92,11 +92,26 @@ class WeeklyOvertimeScheduleViewSet(viewsets.ModelViewSet):
         if schedule.status != WeeklyOvertimeSchedule.DRAFT:
             raise ScheduleLockedConflict()
 
+    @staticmethod
+    def _reject_iso_period_change(request):
+        if 'iso_year' in request.data or 'iso_week' in request.data:
+            return Response(
+                {'detail': 'iso_year e iso_week no pueden modificarse en una planilla existente. Genera una nueva planilla.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return None
+
     def update(self, request, *args, **kwargs):
+        bad = self._reject_iso_period_change(request)
+        if bad is not None:
+            return bad
         self._ensure_mutable(self.get_object())
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
+        bad = self._reject_iso_period_change(request)
+        if bad is not None:
+            return bad
         self._ensure_mutable(self.get_object())
         return super().partial_update(request, *args, **kwargs)
 
