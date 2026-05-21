@@ -94,7 +94,11 @@ class OvertimeScheduleGenerateTests(APITestCase):
 
         OvertimeProfile.objects.create(empleado=self.e_a, profile_type=OvertimeProfile.ROTATION_A)
         OvertimeProfile.objects.create(empleado=self.e_b, profile_type=OvertimeProfile.ROTATION_B)
-        OvertimeProfile.objects.create(empleado=self.e_sm, profile_type=OvertimeProfile.SATURDAY_MONDAY_8H)
+        OvertimeProfile.objects.create(
+            empleado=self.e_sm,
+            profile_type=OvertimeProfile.SATURDAY_OR_MONDAY_8H,
+            custom_weekdays=[0],
+        )
         OvertimeProfile.objects.create(empleado=self.e_4d, profile_type=OvertimeProfile.FIXED_4DAY)
         OvertimeProfile.objects.create(
             empleado=self.e_cx,
@@ -120,11 +124,12 @@ class OvertimeScheduleGenerateTests(APITestCase):
             .order_by('fecha')
             .values_list('fecha', 'assignment_type', 'hours')
         )
-        # Paridad A → lun (0) y mié (2)
+        # Paridad A → lun (0) y mié (2), TIPO_2 a 4h cada uno (8h totales semanales)
         self.assertEqual([d[0] for d in days], [week_dates[0], week_dates[2]])
         for _, t, h in days:
-            self.assertEqual(t, DailyOvertimeAssignment.TIPO_1)
-            self.assertEqual(h, Decimal('8.00'))
+            self.assertEqual(t, DailyOvertimeAssignment.TIPO_2)
+            self.assertEqual(h, Decimal('4.00'))
+        self.assertEqual(sum((h for _, _, h in days), Decimal('0.00')), Decimal('8.00'))
 
     def test_rotation_b_pattern_a(self):
         sched = self._generate()
@@ -133,20 +138,29 @@ class OvertimeScheduleGenerateTests(APITestCase):
             DailyOvertimeAssignment.objects
             .filter(schedule=sched, empleado=self.e_b)
             .order_by('fecha')
-            .values_list('fecha', flat=True)
+            .values_list('fecha', 'assignment_type', 'hours')
         )
-        # Paridad A pero ROTATION_B → mar (1) y jue (3)
-        self.assertEqual(days, [week_dates[1], week_dates[3]])
+        # Paridad A pero ROTATION_B → mar (1) y jue (3), TIPO_2 4h cada uno
+        self.assertEqual([d[0] for d in days], [week_dates[1], week_dates[3]])
+        for _, t, h in days:
+            self.assertEqual(t, DailyOvertimeAssignment.TIPO_2)
+            self.assertEqual(h, Decimal('4.00'))
+        self.assertEqual(sum((h for _, _, h in days), Decimal('0.00')), Decimal('8.00'))
 
-    def test_saturday_monday_profile(self):
+    def test_saturday_or_monday_profile_lunes(self):
         sched = self._generate()
         week_dates = get_overtime_week_dates(self.iso_year, self.iso_week)
-        days = set(
+        days = list(
             DailyOvertimeAssignment.objects
             .filter(schedule=sched, empleado=self.e_sm)
-            .values_list('fecha', flat=True)
+            .order_by('fecha')
+            .values_list('fecha', 'assignment_type', 'hours')
         )
-        self.assertEqual(days, {week_dates[0], week_dates[5]})
+        # custom_weekdays=[0] → solo lunes, TIPO_1, 8h
+        self.assertEqual(len(days), 1)
+        self.assertEqual(days[0][0], week_dates[0])
+        self.assertEqual(days[0][1], DailyOvertimeAssignment.TIPO_1)
+        self.assertEqual(days[0][2], Decimal('8.00'))
 
     def test_fixed_4day(self):
         sched = self._generate()
@@ -155,9 +169,14 @@ class OvertimeScheduleGenerateTests(APITestCase):
             DailyOvertimeAssignment.objects
             .filter(schedule=sched, empleado=self.e_4d)
             .order_by('fecha')
-            .values_list('fecha', flat=True)
+            .values_list('fecha', 'assignment_type', 'hours')
         )
-        self.assertEqual(days, week_dates[:4])
+        self.assertEqual([d[0] for d in days], week_dates[:4])
+        for _, t, h in days:
+            self.assertEqual(t, DailyOvertimeAssignment.TIPO_2)
+            self.assertEqual(h, Decimal('4.00'))
+        # 4 días × 4h = 16h
+        self.assertEqual(sum((h for _, _, h in days), Decimal('0.00')), Decimal('16.00'))
 
     def test_fixed_custom(self):
         sched = self._generate()
@@ -519,6 +538,113 @@ class OvertimeProfileValidationTests(APITestCase):
             'profile_type': OvertimeProfile.ROTATION_A,
         }, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+
+
+class OvertimeSaturdayOrMondayTests(APITestCase):
+    """Reglas del perfil SATURDAY_OR_MONDAY_8H (reemplaza al legacy)."""
+
+    iso_year = ANCHOR_YEAR
+    iso_week = ANCHOR_WEEK
+
+    def setUp(self):
+        self.user = _make_user()
+        self.client.force_authenticate(self.user)
+        _mk_catalogs()
+        self.emp_lun = _mk_emp('SM-LUN', 'Lunes')
+        self.emp_sab = _mk_emp('SM-SAB', 'Sábado')
+
+    def _post_profile(self, emp, custom_weekdays, profile_type=None):
+        return self.client.post('/api/payroll/overtime/profiles/', {
+            'empleado': emp.pk,
+            'profile_type': profile_type or OvertimeProfile.SATURDAY_OR_MONDAY_8H,
+            'custom_weekdays': custom_weekdays,
+        }, format='json')
+
+    def test_accepts_lunes_only(self):
+        resp = self._post_profile(self.emp_lun, [0])
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        sched = generate_overtime_schedule(self.iso_year, self.iso_week, user=self.user)
+        week_dates = get_overtime_week_dates(self.iso_year, self.iso_week)
+        days = list(
+            DailyOvertimeAssignment.objects
+            .filter(schedule=sched, empleado=self.emp_lun)
+            .values_list('fecha', 'assignment_type', 'hours')
+        )
+        self.assertEqual(len(days), 1)
+        self.assertEqual(days[0][0], week_dates[0])
+        self.assertEqual(days[0][1], DailyOvertimeAssignment.TIPO_1)
+        self.assertEqual(days[0][2], Decimal('8.00'))
+
+    def test_accepts_sabado_only(self):
+        resp = self._post_profile(self.emp_sab, [5])
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        sched = generate_overtime_schedule(self.iso_year, self.iso_week, user=self.user)
+        week_dates = get_overtime_week_dates(self.iso_year, self.iso_week)
+        days = list(
+            DailyOvertimeAssignment.objects
+            .filter(schedule=sched, empleado=self.emp_sab)
+            .values_list('fecha', 'assignment_type', 'hours')
+        )
+        self.assertEqual(len(days), 1)
+        self.assertEqual(days[0][0], week_dates[5])
+        self.assertEqual(days[0][1], DailyOvertimeAssignment.TIPO_1)
+        self.assertEqual(days[0][2], Decimal('8.00'))
+
+    def test_rejects_empty_weekdays(self):
+        resp = self._post_profile(self.emp_lun, [])
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_rejects_both_days(self):
+        resp = self._post_profile(self.emp_lun, [0, 5])
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_rejects_invalid_day(self):
+        resp = self._post_profile(self.emp_lun, [2])
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_rejects_out_of_range_day(self):
+        resp = self._post_profile(self.emp_lun, [6])
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_legacy_value_with_weekdays_5_generates_only_saturday(self):
+        # Simula una fila migrada con el valor viejo todavía en la BD.
+        # bypass del serializer: bulk_create no corre clean().
+        DailyOvertimeAssignment.objects.all().delete()
+        OvertimeProfile.objects.bulk_create([
+            OvertimeProfile(
+                empleado=self.emp_sab,
+                profile_type=OvertimeProfile.SATURDAY_MONDAY_8H,
+                custom_weekdays=[5],
+            ),
+        ])
+        sched = generate_overtime_schedule(self.iso_year, self.iso_week, user=self.user)
+        week_dates = get_overtime_week_dates(self.iso_year, self.iso_week)
+        days = list(
+            DailyOvertimeAssignment.objects
+            .filter(schedule=sched, empleado=self.emp_sab)
+            .values_list('fecha', 'assignment_type', 'hours')
+        )
+        self.assertEqual(len(days), 1)
+        self.assertEqual(days[0][0], week_dates[5])
+        self.assertEqual(days[0][1], DailyOvertimeAssignment.TIPO_1)
+        self.assertEqual(days[0][2], Decimal('8.00'))
+
+    def test_legacy_value_with_empty_weekdays_falls_back_to_saturday(self):
+        OvertimeProfile.objects.bulk_create([
+            OvertimeProfile(
+                empleado=self.emp_sab,
+                profile_type=OvertimeProfile.SATURDAY_MONDAY_8H,
+                custom_weekdays=[],
+            ),
+        ])
+        sched = generate_overtime_schedule(self.iso_year, self.iso_week, user=self.user)
+        week_dates = get_overtime_week_dates(self.iso_year, self.iso_week)
+        days = list(
+            DailyOvertimeAssignment.objects
+            .filter(schedule=sched, empleado=self.emp_sab)
+            .values_list('fecha', flat=True)
+        )
+        self.assertEqual(days, [week_dates[5]])
 
 
 class OvertimePRReviewFixesTests(APITestCase):

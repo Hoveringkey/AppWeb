@@ -403,6 +403,158 @@
   gap: 0.35rem;
 }
 
+/* ---- COMBOBOX EMPLEADO ---- */
+.overtime-profile-combobox {
+  position: relative;
+}
+
+.overtime-profile-combobox-input {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  outline: none;
+  text-transform: none;
+  letter-spacing: normal;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.overtime-profile-combobox-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.overtime-profile-combobox-input:disabled {
+  background: var(--color-surface-strong);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.overtime-profile-combobox-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 50;
+}
+
+.overtime-profile-combobox-option {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--color-text);
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.overtime-profile-combobox-option:hover {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.overtime-profile-combobox-option-num {
+  font-weight: var(--font-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.overtime-profile-combobox-option-sep {
+  color: var(--color-text-muted);
+}
+
+.overtime-profile-combobox-option-name {
+  color: inherit;
+}
+
+.overtime-profile-combobox-empty {
+  padding: 0.45rem 0.6rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* ---- TYPE SELECT (TIPO DE PERFIL) ---- */
+.overtime-profile-typeselect {
+  position: relative;
+}
+
+.overtime-profile-typeselect-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.overtime-profile-typeselect-trigger:focus,
+.overtime-profile-typeselect-trigger:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.overtime-profile-typeselect-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 50;
+}
+
+.overtime-profile-typeselect-option {
+  padding: 0.4rem 0.55rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--color-text);
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.overtime-profile-typeselect-option:hover {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.overtime-profile-typeselect-option.active {
+  background: var(--color-accent);
+  color: white;
+}
+
 /* ---- PRINT ---- */
 .overtime-print-only { display: none; }
 

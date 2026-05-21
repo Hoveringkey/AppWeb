@@ -75,24 +75,35 @@ def get_profile_weekdays(profile, parity):
 
     if p_type == OvertimeProfile.ROTATION_A:
         if parity == 'A':
-            return [(0, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1),
-                    (2, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1)]
-        return [(1, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1),
-                (3, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1)]
+            return [(0, DailyOvertimeAssignment.TIPO_2, HOURS_TIPO_2),
+                    (2, DailyOvertimeAssignment.TIPO_2, HOURS_TIPO_2)]
+        return [(1, DailyOvertimeAssignment.TIPO_2, HOURS_TIPO_2),
+                (3, DailyOvertimeAssignment.TIPO_2, HOURS_TIPO_2)]
 
     if p_type == OvertimeProfile.ROTATION_B:
         if parity == 'A':
-            return [(1, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1),
-                    (3, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1)]
-        return [(0, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1),
-                (2, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1)]
+            return [(1, DailyOvertimeAssignment.TIPO_2, HOURS_TIPO_2),
+                    (3, DailyOvertimeAssignment.TIPO_2, HOURS_TIPO_2)]
+        return [(0, DailyOvertimeAssignment.TIPO_2, HOURS_TIPO_2),
+                (2, DailyOvertimeAssignment.TIPO_2, HOURS_TIPO_2)]
+
+    if p_type == OvertimeProfile.SATURDAY_OR_MONDAY_8H:
+        weekdays = profile.custom_weekdays
+        if isinstance(weekdays, list) and len(weekdays) == 1 and weekdays[0] in (0, 5):
+            return [(int(weekdays[0]), DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1)]
+        return []
 
     if p_type == OvertimeProfile.SATURDAY_MONDAY_8H:
-        return [(5, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1),
-                (0, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1)]
+        # Legacy: si custom_weekdays está vacío, fallback a sábado (mismo default que migración).
+        weekdays = profile.custom_weekdays
+        if isinstance(weekdays, list) and len(weekdays) == 1 and weekdays[0] in (0, 5):
+            day = int(weekdays[0])
+        else:
+            day = 5
+        return [(day, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1)]
 
     if p_type == OvertimeProfile.FIXED_4DAY:
-        return [(d, DailyOvertimeAssignment.TIPO_1, HOURS_TIPO_1) for d in range(4)]
+        return [(d, DailyOvertimeAssignment.TIPO_2, HOURS_TIPO_2) for d in range(4)]
 
     if p_type == OvertimeProfile.FIXED_CUSTOM:
         hours = profile.custom_daily_hours or Decimal('0.00')

@@ -142,14 +142,16 @@ class PayrollSnapshot(models.Model):
 class OvertimeProfile(models.Model):
     ROTATION_A = 'ROTATION_A'
     ROTATION_B = 'ROTATION_B'
-    SATURDAY_MONDAY_8H = 'SATURDAY_MONDAY_8H'
+    SATURDAY_OR_MONDAY_8H = 'SATURDAY_OR_MONDAY_8H'
+    SATURDAY_MONDAY_8H = 'SATURDAY_MONDAY_8H'  # legacy: migrado a SATURDAY_OR_MONDAY_8H
     FIXED_4DAY = 'FIXED_4DAY'
     FIXED_CUSTOM = 'FIXED_CUSTOM'
 
     PROFILE_TYPE_CHOICES = [
         (ROTATION_A, 'Rotación A (lun-mié / mar-jue)'),
         (ROTATION_B, 'Rotación B (mar-jue / lun-mié)'),
-        (SATURDAY_MONDAY_8H, 'Sábado y lunes 8h'),
+        (SATURDAY_OR_MONDAY_8H, 'Sábado o Lunes 8h'),
+        (SATURDAY_MONDAY_8H, 'Sábado o Lunes 8h (legacy)'),
         (FIXED_4DAY, 'Lunes a jueves fijo'),
         (FIXED_CUSTOM, 'Personalizado'),
     ]
@@ -157,7 +159,7 @@ class OvertimeProfile(models.Model):
     empleado = models.OneToOneField(
         Employee, on_delete=models.CASCADE, related_name='overtime_profile'
     )
-    profile_type = models.CharField(max_length=20, choices=PROFILE_TYPE_CHOICES)
+    profile_type = models.CharField(max_length=32, choices=PROFILE_TYPE_CHOICES)
     custom_weekdays = models.JSONField(default=list, blank=True)
     custom_daily_hours = models.DecimalField(
         max_digits=5, decimal_places=2, null=True, blank=True
@@ -183,6 +185,17 @@ class OvertimeProfile(models.Model):
                     })
             if self.custom_daily_hours is None or self.custom_daily_hours <= 0:
                 raise ValidationError({'custom_daily_hours': 'Debe ser mayor a 0 para FIXED_CUSTOM.'})
+
+        if self.profile_type in (self.SATURDAY_OR_MONDAY_8H, self.SATURDAY_MONDAY_8H):
+            if not isinstance(self.custom_weekdays, list) or len(self.custom_weekdays) != 1:
+                raise ValidationError({
+                    'custom_weekdays': 'Debe contener exactamente un día: [0]=Lunes o [5]=Sábado.'
+                })
+            day = self.custom_weekdays[0]
+            if day not in (0, 5):
+                raise ValidationError({
+                    'custom_weekdays': 'Día único permitido: 0 (Lunes) o 5 (Sábado).'
+                })
 
 
 class WeeklyOvertimeSchedule(models.Model):

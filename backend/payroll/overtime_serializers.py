@@ -75,6 +75,30 @@ class OvertimeProfileSerializer(serializers.ModelSerializer):
                     'custom_daily_hours': 'Debe ser mayor a 0.'
                 })
 
+        elif profile_type in (
+            OvertimeProfile.SATURDAY_OR_MONDAY_8H,
+            OvertimeProfile.SATURDAY_MONDAY_8H,
+        ):
+            if not isinstance(custom_weekdays, list) or len(custom_weekdays) != 1:
+                raise serializers.ValidationError({
+                    'custom_weekdays': 'Debe contener exactamente un día: [0]=Lunes o [5]=Sábado.'
+                })
+            day = custom_weekdays[0]
+            if isinstance(day, bool) or not isinstance(day, int) or day not in (0, 5):
+                raise serializers.ValidationError({
+                    'custom_weekdays': 'Día único permitido: 0 (Lunes) o 5 (Sábado).'
+                })
+            attrs['custom_weekdays'] = [day]
+            attrs['custom_daily_hours'] = None
+
+        elif profile_type in (
+            OvertimeProfile.ROTATION_A,
+            OvertimeProfile.ROTATION_B,
+            OvertimeProfile.FIXED_4DAY,
+        ):
+            attrs['custom_weekdays'] = []
+            attrs['custom_daily_hours'] = None
+
         return attrs
 
 
