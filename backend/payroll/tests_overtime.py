@@ -740,3 +740,123 @@ class OvertimePRReviewFixesTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
         sched.refresh_from_db()
         self.assertEqual(sched.iso_week, self.iso_week)
+
+
+class OvertimeAssignmentMutabilityTests(APITestCase):
+    """PUBLISHED debe permitir editar asignaciones; solo LOCKED las bloquea."""
+
+    iso_year = ANCHOR_YEAR
+    iso_week = ANCHOR_WEEK
+
+    def setUp(self):
+        self.user = _make_user()
+        self.client.force_authenticate(self.user)
+        self.hx, self.f, self.psg = _mk_catalogs()
+        self.emp = _mk_emp('MUT-1', 'Mutability')
+        OvertimeProfile.objects.create(
+            empleado=self.emp, profile_type=OvertimeProfile.ROTATION_A
+        )
+        self.sched = generate_overtime_schedule(
+            self.iso_year, self.iso_week, user=self.user
+        )
+        self.week_dates = get_overtime_week_dates(self.iso_year, self.iso_week)
+
+    def _publish(self):
+        resp = self.client.post(
+            f'/api/payroll/overtime/schedules/{self.sched.id}/publish/'
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.sched.refresh_from_db()
+
+    def _lock(self):
+        self._publish()
+        resp = self.client.post(
+            f'/api/payroll/overtime/schedules/{self.sched.id}/apply-to-incidences/'
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.sched.refresh_from_db()
+        self.assertEqual(self.sched.status, WeeklyOvertimeSchedule.LOCKED)
+
+    def _empty_date(self):
+        used = set(
+            DailyOvertimeAssignment.objects.filter(
+                schedule=self.sched, empleado=self.emp
+            ).values_list('fecha', flat=True)
+        )
+        for d in self.week_dates:
+            if d not in used:
+                return d
+        raise AssertionError('No hay fechas libres para asignar.')
+
+    def _existing_assignment(self):
+        a = DailyOvertimeAssignment.objects.filter(
+            schedule=self.sched, empleado=self.emp
+        ).first()
+        self.assertIsNotNone(a)
+        return a
+
+    def test_assignment_create_allowed_when_schedule_published(self):
+        self._publish()
+        fecha = self._empty_date()
+        resp = self.client.post('/api/payroll/overtime/assignments/', {
+            'schedule': self.sched.id,
+            'empleado': self.emp.pk,
+            'fecha': fecha.isoformat(),
+            'assignment_type': DailyOvertimeAssignment.TIPO_2,
+            'hours': '4.00',
+            'compensation_type': DailyOvertimeAssignment.PAYROLL,
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+
+    def test_assignment_update_allowed_when_schedule_published(self):
+        self._publish()
+        a = self._existing_assignment()
+        resp = self.client.patch(
+            f'/api/payroll/overtime/assignments/{a.id}/',
+            {'compensation_type': DailyOvertimeAssignment.TXT},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        a.refresh_from_db()
+        self.assertEqual(a.compensation_type, DailyOvertimeAssignment.TXT)
+
+    def test_assignment_delete_allowed_when_schedule_published(self):
+        self._publish()
+        a = self._existing_assignment()
+        resp = self.client.delete(f'/api/payroll/overtime/assignments/{a.id}/')
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT, resp.content)
+        self.assertFalse(
+            DailyOvertimeAssignment.objects.filter(pk=a.pk).exists()
+        )
+
+    def test_assignment_create_blocked_when_schedule_locked(self):
+        fecha = self._empty_date()
+        self._lock()
+        resp = self.client.post('/api/payroll/overtime/assignments/', {
+            'schedule': self.sched.id,
+            'empleado': self.emp.pk,
+            'fecha': fecha.isoformat(),
+            'assignment_type': DailyOvertimeAssignment.TIPO_2,
+            'hours': '4.00',
+            'compensation_type': DailyOvertimeAssignment.PAYROLL,
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT, resp.content)
+
+    def test_assignment_update_blocked_when_schedule_locked(self):
+        a = self._existing_assignment()
+        self._lock()
+        resp = self.client.patch(
+            f'/api/payroll/overtime/assignments/{a.id}/',
+            {'compensation_type': DailyOvertimeAssignment.TXT},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT, resp.content)
+
+    def test_assignment_delete_blocked_when_schedule_locked(self):
+        a = self._existing_assignment()
+        self._lock()
+        resp = self.client.delete(f'/api/payroll/overtime/assignments/{a.id}/')
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT, resp.content)
+        self.assertTrue(
+            DailyOvertimeAssignment.objects.filter(pk=a.pk).exists()
+        )
