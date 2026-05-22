@@ -32,7 +32,7 @@ from .views import WeekClosedConflict
 
 class ScheduleLockedConflict(APIException):
     status_code = status.HTTP_409_CONFLICT
-    default_detail = 'La planilla ya está bloqueada o publicada.'
+    default_detail = 'La planilla ya está bloqueada.'
     default_code = 'schedule_locked'
 
 
@@ -192,7 +192,7 @@ class DailyOvertimeAssignmentViewSet(viewsets.ModelViewSet):
     def _ensure_mutable(self, instance):
         schedule = instance.schedule
         _ensure_week_open(schedule.iso_year, schedule.iso_week)
-        if schedule.status != WeeklyOvertimeSchedule.DRAFT:
+        if schedule.status == WeeklyOvertimeSchedule.LOCKED:
             raise ScheduleLockedConflict()
 
     def create(self, request, *args, **kwargs):
@@ -206,7 +206,7 @@ class DailyOvertimeAssignmentViewSet(viewsets.ModelViewSet):
                 schedule = None
             if schedule is not None:
                 _ensure_week_open(schedule.iso_year, schedule.iso_week)
-                if schedule.status != WeeklyOvertimeSchedule.DRAFT:
+                if schedule.status == WeeklyOvertimeSchedule.LOCKED:
                     raise ScheduleLockedConflict()
         return super().create(request, *args, **kwargs)
 

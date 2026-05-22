@@ -11,6 +11,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { Button, ErrorState, GlassCard, PageShell } from '../ui';
 import OvertimeSchedulePrint from './OvertimeSchedulePrint';
 import OvertimeProfileManager from './OvertimeProfileManager';
+import { formatHoursLabel } from './overtimeFormat';
 import '../modules.css';
 import '../Dashboard.css';
 import './Nomina.css';
@@ -75,16 +76,7 @@ const matchStep = (a: OvertimeAssignment): number => {
   return -1;
 };
 
-const getCellLabel = (a: OvertimeAssignment): string => {
-  if (a.assignment_type === 'TIPO_1' && a.compensation_type === 'PAYROLL') return '1º';
-  if (a.assignment_type === 'TIPO_2' && a.compensation_type === 'PAYROLL') return '2º';
-  if (a.compensation_type === 'TXT') return 'TxT';
-  if (a.assignment_type === 'CUSTOM' && a.compensation_type === 'PAYROLL') {
-    const h = parseFloat(a.hours);
-    return `Cust ${Number.isFinite(h) ? h : a.hours}h`;
-  }
-  return '';
-};
+const getCellLabel = (a: OvertimeAssignment): string => formatHoursLabel(a.hours);
 
 interface RowData {
   empleado: string;
@@ -231,7 +223,7 @@ const OvertimeScheduleView: React.FC = () => {
   }, [schedule]);
 
   const cycleCell = async (row: RowData, fecha: string) => {
-    if (!schedule || schedule.status !== 'DRAFT') return;
+    if (!schedule || schedule.status === 'LOCKED') return;
     const current = row.cells[fecha];
     const forced = Boolean(row.penalty);
     const key = `${row.empleado}-${fecha}`;
@@ -286,6 +278,7 @@ const OvertimeScheduleView: React.FC = () => {
   const isDraft = schedule?.status === 'DRAFT';
   const isPublished = schedule?.status === 'PUBLISHED';
   const isLocked = schedule?.status === 'LOCKED';
+  const isEditable = canEdit && (isDraft || isPublished);
 
   return (
     <PageShell
@@ -424,6 +417,7 @@ const OvertimeScheduleView: React.FC = () => {
                       if (a.compensation_type === 'PAYROLL') payrollHours += h;
                       else txtHours += h;
                     });
+                    const readOnly = !isEditable;
                     return (
                       <tr
                         key={r.empleado}
@@ -435,17 +429,21 @@ const OvertimeScheduleView: React.FC = () => {
                         {schedule.week_dates.map(d => {
                           const a = r.cells[d];
                           const key = `${r.empleado}-${d}`;
-                          const readOnly = !isDraft || !canEdit;
                           const label = a
                             ? getCellLabel(a) + (a.is_forced ? '*' : '')
                             : '';
+                          const pillVariant = a?.compensation_type === 'TXT' ? 'txt' : 'payroll';
                           return (
                             <td
                               key={d}
-                              className={`overtime-cell${readOnly ? ' overtime-cell-readonly' : ''}${a ? ' overtime-cell-filled' : ''}${a?.compensation_type === 'TXT' ? ' overtime-cell-txt' : ''}`}
+                              className={`overtime-cell${readOnly ? ' overtime-cell-readonly' : ''}`}
                               onClick={() => !readOnly && busyCellKey !== key && cycleCell(r, d)}
                             >
-                              {label}
+                              {label && (
+                                <span className={`overtime-cell-pill overtime-cell-pill-${pillVariant}`}>
+                                  {label}
+                                </span>
+                              )}
                             </td>
                           );
                         })}
@@ -457,9 +455,14 @@ const OvertimeScheduleView: React.FC = () => {
                 </tbody>
               </table>
 
-              {(isPublished || isLocked) && (
+              {isPublished && (
                 <p className="overtime-grid-note">
-                  La planilla está {isLocked ? 'bloqueada' : 'publicada'}; las celdas son de solo lectura.
+                  La planilla está publicada, pero aún puede editarse antes de aplicarse a incidencias.
+                </p>
+              )}
+              {isLocked && (
+                <p className="overtime-grid-note">
+                  La planilla está bloqueada; ya fue aplicada a incidencias.
                 </p>
               )}
             </div>

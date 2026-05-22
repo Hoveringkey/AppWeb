@@ -131,9 +131,9 @@ class DailyOvertimeAssignmentSerializer(serializers.ModelSerializer):
         if schedule is None:
             raise serializers.ValidationError({'schedule': 'Requerido.'})
 
-        if schedule.status != WeeklyOvertimeSchedule.DRAFT:
+        if schedule.status == WeeklyOvertimeSchedule.LOCKED:
             raise serializers.ValidationError({
-                'schedule': 'Solo se pueden editar asignaciones de una planilla en DRAFT.'
+                'schedule': 'No se pueden editar asignaciones de una planilla bloqueada.'
             })
 
         fecha = attrs.get('fecha', getattr(self.instance, 'fecha', None))

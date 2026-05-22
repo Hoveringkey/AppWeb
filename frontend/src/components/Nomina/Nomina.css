@@ -234,12 +234,12 @@
   cursor: pointer;
   user-select: none;
   min-width: 56px;
-  font-weight: var(--font-semibold);
-  border-radius: var(--radius-sm);
+  padding: 4px;
+  vertical-align: middle;
 }
 
-.overtime-cell:hover:not(.overtime-cell-readonly) {
-  background: var(--color-accent-soft);
+.overtime-cell:hover:not(.overtime-cell-readonly) .overtime-cell-pill {
+  filter: brightness(0.96);
 }
 
 .overtime-cell-readonly {
@@ -247,14 +247,24 @@
   opacity: 0.85;
 }
 
-.overtime-cell-filled {
-  background: #e0f0ff;
-  color: #0d4a8a;
+.overtime-cell-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-semibold);
 }
 
-.overtime-cell-txt {
-  background: #f3e0ff;
-  color: #5a1b8a;
+.overtime-cell-pill-payroll {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-hover);
+}
+
+.overtime-cell-pill-txt {
+  background: color-mix(in srgb, var(--color-violet) 14%, transparent);
+  color: var(--color-violet);
 }
 
 .overtime-row-penalized {
@@ -560,24 +570,43 @@
 
 @media print {
   body { background: white; color: black; }
+
   .navbar,
-  .pr-toolbar,
-  .overtime-toolbar,
-  .overtime-screen-grid > .overtime-glass-edit,
-  .pr-prompt,
-  button,
+  .axis-page-shell__header,
+  .axis-page-shell__actions,
   .axis-button,
-  .nomina-summary-grid,
+  .pr-toolbar,
+  .pr-prompt,
+  .overtime-toolbar,
   .overtime-grid-wrapper,
   .overtime-profile-form,
   .overtime-profile-search,
-  .overtime-profile-table-wrapper {
+  .overtime-profile-table-wrapper,
+  .nomina-summary-grid,
+  .no-print {
     display: none !important;
   }
-  .overtime-print-only { display: block; }
+
+  .axis-page-shell,
+  .axis-page-shell__inner,
+  .axis-glass-card,
+  .overtime-screen-grid {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+
+  .overtime-print-only {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
   .overtime-print-title {
     text-align: center;
-    margin-bottom: 0.5rem;
+    margin: 0 0 0.5rem 0;
     font-size: 14pt;
     color: #000;
   }
