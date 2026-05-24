@@ -33,9 +33,11 @@ import {
   WarningCircle,
   CheckCircle,
   Calculator,
-  CircleNotch
+  CircleNotch,
+  DownloadSimple,
 } from '@phosphor-icons/react';
 import type { DesgloseRow } from './Nomina/GridRenderers';
+import { exportPayrollXlsx } from './Nomina/payrollExport';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -113,6 +115,7 @@ const PayrollReport: React.FC = () => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [isClosing, setIsClosing]       = useState(false);
   const [isClosed, setIsClosed]         = useState(false);
+  const [isExporting, setIsExporting]   = useState(false);
   const [quickFilterText, setQuickFilterText] = useState('');
   const canManagePayroll = hasPermission('can_manage_payroll');
 
@@ -189,6 +192,23 @@ const PayrollReport: React.FC = () => {
     }
   };
 
+  const handleExport = async () => {
+    if (!periodValid) return;
+    if (calcResults.length === 0) return;
+    setIsExporting(true);
+    setCalcError(null);
+    try {
+      await exportPayrollXlsx(calcResults, {
+        week: parseInt(calcWeekNum, 10),
+        year: parseInt(calcIsoYear, 10),
+      });
+    } catch {
+      setCalcError('No se pudo exportar la nómina. Intenta de nuevo.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') handleCalculate();
   };
@@ -259,6 +279,17 @@ const PayrollReport: React.FC = () => {
               {isCalculating
                 ? <><CircleNotch className="animate-spin" size={16} /> Calculando…</>
                 : <><Calculator size={16} weight="duotone" /> Calcular Nómina</>
+              }
+            </Button>
+            <Button
+              id="payroll-export-btn"
+              variant="secondary"
+              onClick={handleExport}
+              disabled={isExporting || isCalculating || calcResults.length === 0 || !periodValid}
+            >
+              {isExporting
+                ? <><CircleNotch className="animate-spin" size={16} /> Exportando…</>
+                : <><DownloadSimple size={16} weight="duotone" /> Exportar</>
               }
             </Button>
             {canManagePayroll && (
