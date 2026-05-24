@@ -126,7 +126,8 @@ export async function exportPayrollXlsx(
 
     const isZebra = i % 2 === 1;
 
-    dataRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+    dataRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      if (colNumber > COLUMNS.length) return;
       const colKey = COLUMNS[colNumber - 1]?.key;
       const wrap = colKey === 'resumen' || colKey === 'ausentismos';
 
